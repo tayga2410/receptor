@@ -74,7 +74,8 @@ export const formatCurrency = (amount, currencyCode) => {
   return `${amount}${symbol}`;
 };
 
-export const formatPricePerUnit = (price, currency, unit) => {
+export const formatPricePerUnit = (price, currency, unit, language = 'RU') => {
   const symbol = getCurrencySymbol(currency);
-  return `${price}${symbol}/${unit}`;
+  const unitName = language === 'KZ' ? unit?.nameKZ : language === 'EN' ? unit?.nameEN : unit?.name;
+  return `${price}${symbol}/${unitName}`;
 };

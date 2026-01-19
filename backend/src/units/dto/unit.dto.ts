@@ -4,6 +4,14 @@ export class CreateUnitDto {
   @IsString()
   name: string;
 
+  @IsOptional()
+  @IsString()
+  nameKZ?: string;
+
+  @IsOptional()
+  @IsString()
+  nameEN?: string;
+
   @IsString()
   shortName: string;
 
@@ -24,6 +32,14 @@ export class UpdateUnitDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  nameKZ?: string;
+
+  @IsOptional()
+  @IsString()
+  nameEN?: string;
 
   @IsOptional()
   @IsString()

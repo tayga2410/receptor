@@ -47,6 +47,8 @@ model Unit {
   id                String    @id @default(uuid()) @db.Uuid
   userId            String?   @db.Uuid
   name              String
+  nameKZ            String?
+  nameEN            String?
   shortName         String    @unique
   baseUnitId        String?   @default("")
   conversionFactor  Float?    @default(1)

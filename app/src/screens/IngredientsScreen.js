@@ -7,27 +7,24 @@ import { api } from '../services/api';
 import { formatPricePerUnit } from '../utils/currency';
 
 const IngredientsScreen = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [ingredients, setIngredients] = useState([]);
   const [filteredIngredients, setFilteredIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortType, setSortType] = useState('name_asc');
 
-  const loadIngredients = async () => {
-    try {
-      const response = await api.ingredients.getAll();
-      const data = await response.json();
-      const sortedData = [...data].sort((a, b) => a.name.localeCompare(b.name));
-      setIngredients(sortedData);
-      setFilteredIngredients(sortedData);
-    } catch (error) {
-      console.error('Failed to load ingredients:', error);
-      Alert.alert('Error', error.message || 'Failed to load ingredients');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const handleSortByName = () => {
+    const newType = sortType === 'name_asc' ? 'name_desc' : 'name_asc';
+    setSortType(newType);
+    setFilteredIngredients(applySort(filteredIngredients));
+  };
+
+  const handleSortByPrice = () => {
+    const newType = sortType === 'price_asc' ? 'price_desc' : 'price_asc';
+    setSortType(newType);
+    setFilteredIngredients(applySort(filteredIngredients));
   };
 
   useEffect(() => {
@@ -41,15 +38,49 @@ const IngredientsScreen = ({ navigation }) => {
   }, [navigation]);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredIngredients(ingredients);
-    } else {
-      const filtered = ingredients.filter(item =>
+    let data = ingredients;
+    if (searchQuery.trim() !== '') {
+      data = ingredients.filter(item =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredIngredients(filtered);
     }
-  }, [searchQuery, ingredients]);
+    setFilteredIngredients(applySort(data));
+  }, [searchQuery, ingredients, sortType]);
+
+  const applySort = (data) => {
+    const sorted = [...data];
+    switch (sortType) {
+      case 'name_asc':
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'name_desc':
+        sorted.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case 'price_asc':
+        sorted.sort((a, b) => a.pricePerUnit - b.pricePerUnit);
+        break;
+      case 'price_desc':
+        sorted.sort((a, b) => b.pricePerUnit - a.pricePerUnit);
+        break;
+    }
+    return sorted;
+  };
+
+  const loadIngredients = async () => {
+    try {
+      const response = await api.ingredients.getAll();
+      const data = await response.json();
+      const sortedData = applySort(data);
+      setIngredients(sortedData);
+      setFilteredIngredients(sortedData);
+    } catch (error) {
+      console.error('Failed to load ingredients:', error);
+      Alert.alert('Error', error.message || 'Failed to load ingredients');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -72,7 +103,7 @@ const IngredientsScreen = ({ navigation }) => {
       <View style={styles.ingredientHeader}>
         <Text style={styles.ingredientName}>{item.name}</Text>
         <Text style={styles.ingredientPrice}>
-          {formatPricePerUnit(item.pricePerUnit, item.currency, item.unit?.shortName || item.unitId)}
+          {formatPricePerUnit(item.pricePerUnit, item.currency, item.unit, language)}
         </Text>
       </View>
     </Pressable>
@@ -107,6 +138,28 @@ const IngredientsScreen = ({ navigation }) => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+        <View style={styles.sortButtons}>
+          <TouchableOpacity 
+            style={[styles.sortButton, sortType.includes('name') && styles.sortButtonActive]} 
+            onPress={handleSortByName}
+          >
+            <MaterialCommunityIcons 
+              name={sortType === 'name_asc' ? 'sort-alphabetical-ascending' : 'sort-alphabetical-descending'} 
+              size={20} 
+              color={sortType.includes('name') ? COLORS.accent : COLORS.text} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.sortButton, sortType.includes('price') && styles.sortButtonActive]} 
+            onPress={handleSortByPrice}
+          >
+            <MaterialCommunityIcons 
+              name={sortType === 'price_asc' ? 'sort-numeric-ascending' : 'sort-numeric-descending'} 
+              size={20} 
+              color={sortType.includes('price') ? COLORS.accent : COLORS.text} 
+            />
+          </TouchableOpacity>
+        </View>
       </View>
       <FlatList
         data={filteredIngredients}
@@ -152,6 +205,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: THEME.spacing.md,
     color: COLORS.text,
+  },
+  sortButton: {
+    padding: THEME.spacing.sm,
+    marginLeft: THEME.spacing.sm,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortButtonActive: {
+    backgroundColor: COLORS.accent + '20',
   },
   ingredientCard: {
     backgroundColor: COLORS.surface,

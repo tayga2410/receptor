@@ -14,27 +14,30 @@ async function main() {
   console.log('Seeding database...');
 
   const systemUnits = [
-    { name: 'Килограмм', shortName: 'kg', type: UnitType.WEIGHT, baseUnitId: 'gram', conversionFactor: 1000, isSystem: true },
-    { name: 'Грамм', shortName: 'g', type: UnitType.WEIGHT, baseUnitId: 'gram', conversionFactor: 1, isSystem: true },
-    { name: 'Литр', shortName: 'l', type: UnitType.VOLUME, baseUnitId: 'milliliter', conversionFactor: 1000, isSystem: true },
-    { name: 'Миллилитр', shortName: 'ml', type: UnitType.VOLUME, baseUnitId: 'milliliter', conversionFactor: 1, isSystem: true },
-    { name: 'Штука', shortName: 'шт', type: UnitType.PIECE, baseUnitId: 'piece', conversionFactor: 1, isSystem: true },
-    { name: 'Столовая ложка', shortName: 'ст. ложка', type: UnitType.VOLUME, baseUnitId: 'milliliter', conversionFactor: 15, isSystem: true },
-    { name: 'Чайная ложка', shortName: 'ч. ложка', type: UnitType.VOLUME, baseUnitId: 'milliliter', conversionFactor: 5, isSystem: true },
-    { name: 'Зубчик', shortName: 'зубчик', type: UnitType.PIECE, baseUnitId: 'piece', conversionFactor: 1, isSystem: true },
+    { name: 'Килограмм', nameKZ: 'Килограмм', nameEN: 'Kilogram', shortName: 'кг', type: UnitType.WEIGHT },
+    { name: 'Грамм', nameKZ: 'Грамм', nameEN: 'Gram', shortName: 'г', type: UnitType.WEIGHT },
+    { name: 'Литр', nameKZ: 'Литр', nameEN: 'Liter', shortName: 'л', type: UnitType.VOLUME },
+    { name: 'Миллилитр', nameKZ: 'Миллилитр', nameEN: 'Milliliter', shortName: 'мл', type: UnitType.VOLUME },
+    { name: 'Штука', nameKZ: 'Дана', nameEN: 'Piece', shortName: 'шт', type: UnitType.PIECE },
   ];
 
   for (const unit of systemUnits) {
     await prisma.unit.upsert({
       where: { shortName: unit.shortName },
-      update: {},
+      update: {
+        name: unit.name,
+        nameKZ: unit.nameKZ,
+        nameEN: unit.nameEN,
+        type: unit.type,
+        isSystem: true,
+      },
       create: {
         name: unit.name,
+        nameKZ: unit.nameKZ,
+        nameEN: unit.nameEN,
         shortName: unit.shortName,
         type: unit.type,
-        baseUnitId: unit.baseUnitId,
-        conversionFactor: unit.conversionFactor,
-        isSystem: unit.isSystem,
+        isSystem: true,
       },
     });
   }

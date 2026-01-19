@@ -19,7 +19,7 @@ import useStore from '../store/useStore';
 import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
 
 const IngredientFormScreen = ({ route, navigation }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
   const ingredient = route.params?.ingredient;
   const [loading, setLoading] = useState(false);
@@ -183,7 +183,7 @@ const IngredientFormScreen = ({ route, navigation }) => {
                 {units.map((unit) => (
                   <Picker.Item
                     key={unit.id}
-                    label={unit.name}
+                    label={language === 'KZ' ? unit.nameKZ : language === 'EN' ? unit.nameEN : unit.name}
                     value={unit.id}
                   />
                 ))}
