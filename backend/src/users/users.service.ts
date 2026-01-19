@@ -27,16 +27,34 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, updateDto: any) {
-    const { name, password } = updateDto;
+    const { name, email, password, currentPassword } = updateDto;
     const updateData: any = {};
+
+    if (password) {
+      const bcrypt = require('bcrypt');
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { password: true },
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
+        throw new Error('Текущий пароль неверен');
+      }
+
+      updateData.password = await bcrypt.hash(password, 10);
+    }
 
     if (name) {
       updateData.name = name;
     }
 
-    if (password) {
-      const bcrypt = require('bcrypt');
-      updateData.password = await bcrypt.hash(password, 10);
+    if (email) {
+      updateData.email = email;
     }
 
     return this.prisma.user.update({

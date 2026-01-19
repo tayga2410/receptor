@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { SeedModule } from './common/seed.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { UnitsModule } from './units/units.module';
@@ -12,6 +13,7 @@ import { CalculatorModule } from './calculator/calculator.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    SeedModule,
     AuthModule,
     UsersModule,
     UnitsModule,

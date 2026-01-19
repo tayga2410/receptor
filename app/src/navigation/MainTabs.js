@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -8,9 +9,12 @@ import RecipesScreen from '../screens/RecipesScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import CalculatorScreen from '../screens/CalculatorScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import IngredientFormScreen from '../screens/IngredientFormScreen';
 import LanguageSelector from '../components/LanguageSelector';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
 const TabIcon = ({ iconName, focused }) => (
   <MaterialCommunityIcons
@@ -19,6 +23,87 @@ const TabIcon = ({ iconName, focused }) => (
     color={focused ? COLORS.accent : COLORS.textLight}
   />
 );
+
+const IngredientsStack = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.surface,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        },
+        headerTitleStyle: {
+          color: COLORS.text,
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        headerRight: () => <LanguageSelector />,
+      }}
+    >
+      <Stack.Screen
+        name="IngredientsList"
+        component={IngredientsScreen}
+        options={{ title: t('ingredients') }}
+      />
+      <Stack.Screen
+        name="IngredientForm"
+        component={IngredientFormScreen}
+        options={({ route, navigation }) => ({
+          title: route.params?.ingredient ? t('edit') : t('add_ingredient'),
+          headerRight: () =>
+            route.params?.ingredient ? (
+              <TouchableOpacity
+                onPress={() => navigation.setParams({ showDeleteDialog: true })}
+                style={{ marginRight: 15 }}
+              >
+                <MaterialCommunityIcons name="delete" size={24} color={COLORS.error} />
+              </TouchableOpacity>
+            ) : null,
+        })}
+      />
+    </Stack.Navigator>
+  );
+};
+
+const ProfileStack = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.surface,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        },
+        headerTitleStyle: {
+          color: COLORS.text,
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        headerRight: () => <LanguageSelector />,
+      }}
+    >
+      <Stack.Screen
+        name="ProfileScreen"
+        component={ProfileScreen}
+        options={{ title: t('profile') }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Редактировать профиль' }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const MainTabs = () => {
   const { t } = useTranslation();
@@ -49,19 +134,7 @@ const MainTabs = () => {
         tabBarItemStyle: {
           paddingVertical: 4,
         },
-        headerStyle: {
-          backgroundColor: COLORS.surface,
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
-        },
-        headerTitleStyle: {
-          color: COLORS.text,
-          fontWeight: 'bold',
-          fontSize: 20,
-        },
-        headerRight: () => <LanguageSelector />,
+        headerShown: false,
       })}
     >
       <Tab.Screen
@@ -71,8 +144,8 @@ const MainTabs = () => {
       />
       <Tab.Screen
         name="Ingredients"
-        component={IngredientsScreen}
-        options={() => ({ title: t('ingredients') })}
+        component={IngredientsStack}
+        options={{ title: t('ingredients') }}
       />
       <Tab.Screen
         name="Calculator"
@@ -81,8 +154,8 @@ const MainTabs = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
-        options={() => ({ title: t('profile') })}
+        component={ProfileStack}
+        options={{ title: t('profile') }}
       />
     </Tab.Navigator>
   );

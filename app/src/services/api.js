@@ -112,16 +112,27 @@ export const apiFetch = async (endpoint, options = {}) => {
     ...options.headers,
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // Получаем свежий токен из store
+  const currentToken = useStore.getState().token || token;
+  
+  if (currentToken) {
+    headers['Authorization'] = `Bearer ${currentToken}`;
+    console.log(`apiFetch: ${url} with token (first 10 chars): ${currentToken.substring(0, 10)}...`);
+  } else {
+    console.log(`apiFetch: ${url} WITHOUT token`);
   }
 
   try {
-    console.log(`apiFetch: ${url}`);
     const response = await fetchWithTimeout(url, {
       ...options,
       headers,
     }, options.timeout || 15000);
+
+    if (!response.ok) {
+      console.log(`Response not ok: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.log('Error data:', errorData);
+    }
 
     return response;
   } catch (error) {
@@ -157,6 +168,10 @@ export const api = {
   },
   users: {
     getProfile: () => apiFetch('/users/me'),
+    updateProfile: (data) => apiFetch('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
     updateCurrency: (currency) => apiFetch('/users/me/currency', {
       method: 'PATCH',
       body: JSON.stringify({ currency }),

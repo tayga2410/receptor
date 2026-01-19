@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@n
 import { UnitsService } from './units.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CreateUnitDto, UpdateUnitDto } from './dto/unit.dto';
 
 @Controller('units')
@@ -14,6 +15,7 @@ export class UnitsController {
     return this.unitsService.findAll(user.id);
   }
 
+  @Public()
   @Get('system')
   findSystem() {
     return this.unitsService.findSystem();

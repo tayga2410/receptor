@@ -1,27 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { api } from '../services/api';
+import { formatPricePerUnit } from '../utils/currency';
 
 const IngredientsScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadIngredients = async () => {
+    try {
+      const response = await api.ingredients.getAll();
+      const data = await response.json();
+      setIngredients(data);
+    } catch (error) {
+      console.error('Failed to load ingredients:', error);
+      Alert.alert('Error', error.message || 'Failed to load ingredients');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    // TODO: Загрузка данных с API
-    setLoading(false);
-  }, []);
+    loadIngredients();
+    
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadIngredients();
+    });
+    
+    return unsubscribe;
+  }, [navigation]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadIngredients();
+  };
+
+  const handleAddIngredient = () => {
+    navigation.navigate('IngredientForm');
+  };
+
+  const handleIngredientPress = (ingredient) => {
+    navigation.navigate('IngredientForm', { ingredient });
+  };
 
   const renderIngredient = ({ item }) => (
     <Pressable
       style={styles.ingredientCard}
-      onPress={() => console.log('Ingredient details:', item.id)}
+      onPress={() => handleIngredientPress(item)}
     >
       <View style={styles.ingredientHeader}>
         <Text style={styles.ingredientName}>{item.name}</Text>
         <Text style={styles.ingredientPrice}>
-          {item.pricePerUnit} {item.currency}/{item.unit}
+          {formatPricePerUnit(item.pricePerUnit, item.currency, item.unit?.name || item.unitId)}
         </Text>
       </View>
     </Pressable>
@@ -29,7 +65,11 @@ const IngredientsScreen = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
+      <MaterialCommunityIcons name="food-variant" size={64} color={COLORS.textLight} />
       <Text style={styles.emptyStateText}>{t('no_ingredients')}</Text>
+      <TouchableOpacity style={styles.addFirstButton} onPress={handleAddIngredient}>
+        <Text style={styles.addFirstButtonText}>{t('add_first_ingredient')}</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -48,8 +88,15 @@ const IngredientsScreen = ({ navigation }) => {
         renderItem={renderIngredient}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmptyState}
+        ListEmptyComponent={!loading ? renderEmptyState : null}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
       />
+      {ingredients.length > 0 && (
+        <TouchableOpacity style={styles.fab} onPress={handleAddIngredient}>
+          <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -101,6 +148,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textLight,
     textAlign: 'center',
+    marginTop: THEME.spacing.md,
+  },
+  addFirstButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingVertical: THEME.spacing.md,
+    borderRadius: THEME.roundness * 2,
+    marginTop: THEME.spacing.lg,
+  },
+  addFirstButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fab: {
+    position: 'absolute',
+    right: THEME.spacing.lg,
+    bottom: THEME.spacing.xl,
+    backgroundColor: COLORS.accent,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   loadingContainer: {
     flex: 1,
