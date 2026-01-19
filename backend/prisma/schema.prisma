@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Currency {
+  KZT
+  RUB
+  KGS
+  UZS
+  USD
+  EUR
+}
+
+enum UnitType {
+  WEIGHT
+  VOLUME
+  PIECE
+  CUSTOM
+}
+
+enum SubscriptionType {
+  FREE
+  PREMIUM
+}
+
+model User {
+  id                String        @id @default(uuid()) @db.Uuid
+  username          String        @unique
+  email             String        @unique
+  password          String
+  name              String
+  currency          Currency      @default(KZT)
+  subscriptionType SubscriptionType @default(FREE)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  ingredients       Ingredient[]
+  recipes           Recipe[]
+  units             Unit[]
+}
+
+model Unit {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String?   @db.Uuid
+  name              String
+  shortName         String    @unique
+  baseUnitId        String?   @default("")
+  conversionFactor  Float?    @default(1)
+  type              UnitType
+  isSystem          Boolean   @default(false)
+  user              User?     @relation(fields: [userId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  ingredients       Ingredient[]
+  recipeIngredients RecipeIngredient[]
+}
+
+model Ingredient {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  name              String
+  unitId            String    @db.Uuid
+  pricePerUnit      Float
+  currency          Currency
+  category          String?
+  unit              Unit      @relation(fields: [unitId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  recipeIngredients RecipeIngredient[]
+}
+
+model Recipe {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  name              String?
+  description       String?
+  portions          Int       @default(1)
+  salePrice         Float
+  currency          Currency
+  marginPercent     Float     @default(0)
+  user              User      @relation(fields: [userId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  ingredients       RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id                String      @id @default(uuid()) @db.Uuid
+  recipeId          String      @db.Uuid
+  ingredientId      String      @db.Uuid
+  quantity          Float
+  unitId            String      @db.Uuid
+  recipe            Recipe      @relation(fields: [recipeId], references: [id])
+  ingredient        Ingredient  @relation(fields: [ingredientId], references: [id])
+  unit              Unit        @relation(fields: [unitId], references: [id])
+}

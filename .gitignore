@@ -1,0 +1,71 @@
+# Documentation files
+*.md
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+lerna-debug.*
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Build outputs
+dist/
+build/
+out/
+
+# Cache
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Expo (mobile app)
+.expo/
+.expo-shared/
+web-build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma
+prisma/migrations/migration_lock.toml
+
+# Lock files (optional - uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
