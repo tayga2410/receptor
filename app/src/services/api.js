@@ -130,8 +130,6 @@ export const apiFetch = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       console.log(`Response not ok: ${response.status} ${response.statusText}`);
-      const errorData = await response.json().catch(() => ({}));
-      console.log('Error data:', errorData);
     }
 
     return response;

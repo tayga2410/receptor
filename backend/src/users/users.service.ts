@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Currency } from '@prisma/client';
 
@@ -30,7 +30,7 @@ export class UsersService {
     const { name, email, password, currentPassword } = updateDto;
     const updateData: any = {};
 
-    if (password) {
+    if (password || email) {
       const bcrypt = require('bcrypt');
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -38,15 +38,21 @@ export class UsersService {
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new NotFoundException('User not found');
+      }
+
+      if (!currentPassword) {
+        throw new BadRequestException('Для смены email или пароля введите текущий пароль');
       }
 
       const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
       if (!isPasswordValid) {
-        throw new Error('Текущий пароль неверен');
+        throw new BadRequestException('Неверный текущий пароль');
       }
 
-      updateData.password = await bcrypt.hash(password, 10);
+      if (password) {
+        updateData.password = await bcrypt.hash(password, 10);
+      }
     }
 
     if (name) {

@@ -10,6 +10,7 @@ import IngredientsScreen from '../screens/IngredientsScreen';
 import CalculatorScreen from '../screens/CalculatorScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import IngredientFormScreen from '../screens/IngredientFormScreen';
 import LanguageSelector from '../components/LanguageSelector';
 
@@ -99,7 +100,12 @@ const ProfileStack = () => {
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
-        options={{ title: 'Редактировать профиль' }}
+        options={{ title: t('edit_profile_title') }}
+      />
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ title: t('change_password_title') }}
       />
     </Stack.Navigator>
   );

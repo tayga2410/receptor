@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import Logo from '../components/Logo';
@@ -11,6 +12,7 @@ const LoginScreen = ({ navigation }) => {
   const login = useStore((state) => state.login);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -68,13 +70,18 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder={t('enter_password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.inputWithIcon}>
+            <TextInput
+              style={styles.inputWithIconText}
+              placeholder={t('enter_password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.iconButton}>
+              {showPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
+            </Pressable>
+          </View>
         </View>
 
         <Pressable style={styles.forgotPassword}>
@@ -160,6 +167,22 @@ const styles = StyleSheet.create({
     borderRadius: THEME.roundness,
     padding: THEME.spacing.md,
     fontSize: 16,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: THEME.roundness,
+  },
+  inputWithIconText: {
+    flex: 1,
+    padding: THEME.spacing.md,
+    fontSize: 16,
+  },
+  iconButton: {
+    paddingHorizontal: THEME.spacing.md,
   },
   forgotPassword: {
     alignItems: 'flex-end',

@@ -30,7 +30,7 @@ const IngredientFormScreen = ({ route, navigation }) => {
     name: ingredient?.name || '',
     pricePerUnit: ingredient?.pricePerUnit?.toString() || '',
     unitId: ingredient?.unitId || '',
-    currency: ingredient?.currency || user?.currency || 'KZT',
+    currency: user?.currency || 'KZT',
   });
 
   useEffect(() => {
@@ -162,19 +162,9 @@ const IngredientFormScreen = ({ route, navigation }) => {
                 placeholderTextColor={COLORS.textLight}
                 keyboardType="decimal-pad"
               />
-              <Picker
-                selectedValue={formData.currency}
-                onValueChange={(value) => setFormData({ ...formData, currency: value })}
-                style={styles.currencyPicker}
-              >
-                {Object.keys(CURRENCIES).map((currency) => (
-                  <Picker.Item
-                    key={currency}
-                    label={`${currency} (${CURRENCIES[currency].symbol})`}
-                    value={currency}
-                  />
-                ))}
-              </Picker>
+              <Text style={styles.currencyLabel}>
+                {CURRENCIES[formData.currency]?.symbol || formData.currency}
+              </Text>
             </View>
           </View>
 
@@ -266,14 +256,17 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
     borderRightWidth: 0,
   },
-  currencyPicker: {
-    width: 100,
+  currencyLabel: {
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.md,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: THEME.roundness,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   picker: {
     backgroundColor: COLORS.surface,

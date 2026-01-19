@@ -63,7 +63,10 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleLogout = () => {
     logout();
-    navigation.navigate('Auth');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Auth' }],
+    });
   };
 
   return (
@@ -95,6 +98,10 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>{t('settings')}</Text>
           <Pressable style={styles.menuItem} onPress={() => navigation.navigate('EditProfile')}>
             <Text style={styles.menuItemText}>{t('edit_profile')}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textLight} />
+          </Pressable>
+          <Pressable style={styles.menuItem} onPress={() => navigation.navigate('ChangePassword')}>
+            <Text style={styles.menuItemText}>{t('change_password')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textLight} />
           </Pressable>
           <Pressable style={styles.menuItem} onPress={() => setCurrencyModalVisible(true)}>

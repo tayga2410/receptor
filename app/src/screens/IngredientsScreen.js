@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -9,14 +9,18 @@ import { formatPricePerUnit } from '../utils/currency';
 const IngredientsScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const [ingredients, setIngredients] = useState([]);
+  const [filteredIngredients, setFilteredIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadIngredients = async () => {
     try {
       const response = await api.ingredients.getAll();
       const data = await response.json();
-      setIngredients(data);
+      const sortedData = [...data].sort((a, b) => a.name.localeCompare(b.name));
+      setIngredients(sortedData);
+      setFilteredIngredients(sortedData);
     } catch (error) {
       console.error('Failed to load ingredients:', error);
       Alert.alert('Error', error.message || 'Failed to load ingredients');
@@ -35,6 +39,17 @@ const IngredientsScreen = ({ navigation }) => {
     
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredIngredients(ingredients);
+    } else {
+      const filtered = ingredients.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredIngredients(filtered);
+    }
+  }, [searchQuery, ingredients]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -57,7 +72,7 @@ const IngredientsScreen = ({ navigation }) => {
       <View style={styles.ingredientHeader}>
         <Text style={styles.ingredientName}>{item.name}</Text>
         <Text style={styles.ingredientPrice}>
-          {formatPricePerUnit(item.pricePerUnit, item.currency, item.unit?.name || item.unitId)}
+          {formatPricePerUnit(item.pricePerUnit, item.currency, item.unit?.shortName || item.unitId)}
         </Text>
       </View>
     </Pressable>
@@ -83,16 +98,26 @@ const IngredientsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.searchContainer}>
+        <MaterialCommunityIcons name="magnify" size={20} color={COLORS.textLight} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('search')}
+          placeholderTextColor={COLORS.textLight}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
       <FlatList
-        data={ingredients}
+        data={filteredIngredients}
         renderItem={renderIngredient}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={!loading ? renderEmptyState : null}
+        ListEmptyComponent={!loading && filteredIngredients.length === 0 ? renderEmptyState : null}
         refreshing={refreshing}
         onRefresh={handleRefresh}
       />
-      {ingredients.length > 0 && (
+      {filteredIngredients.length > 0 && (
         <TouchableOpacity style={styles.fab} onPress={handleAddIngredient}>
           <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -108,6 +133,25 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: THEME.spacing.md,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    margin: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
+    paddingHorizontal: THEME.spacing.md,
+    borderRadius: THEME.roundness,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  searchIcon: {
+    marginRight: THEME.spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: THEME.spacing.md,
+    color: COLORS.text,
   },
   ingredientCard: {
     backgroundColor: COLORS.surface,

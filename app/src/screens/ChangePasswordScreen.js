@@ -12,57 +12,45 @@ import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
-import useStore from '../store/useStore';
 
-const EditProfileScreen = ({ navigation }) => {
+const ChangePasswordScreen = ({ navigation }) => {
   const { t } = useTranslation();
-  const { user, setUser } = useStore();
   
   const [loading, setLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
     currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
-  const emailChanged = formData.email !== (user?.email || '');
-  const needsPassword = emailChanged;
-
-  const handleSave = async () => {
-    if (!formData.name.trim()) {
-      Alert.alert(t('error'), t('error_name_empty'));
+  const handleChangePassword = async () => {
+    if (!formData.currentPassword) {
+      Alert.alert(t('error'), t('error_current_password'));
       return;
     }
 
-    if (formData.email && !formData.email.includes('@')) {
-      Alert.alert(t('error'), t('error_invalid_email'));
+    if (formData.newPassword.length < 6) {
+      Alert.alert(t('error'), t('error_short_password'));
       return;
     }
 
-    if (needsPassword && !formData.currentPassword) {
-      Alert.alert(t('error'), t('current_password_required'));
+    if (formData.newPassword !== formData.confirmPassword) {
+      Alert.alert(t('error'), t('error_password_mismatch'));
       return;
     }
 
     try {
       setLoading(true);
-      const updateData: any = { name: formData.name.trim() };
-      
-      if (formData.email) {
-        updateData.email = formData.email.trim();
-      }
-      
-      if (needsPassword) {
-        updateData.currentPassword = formData.currentPassword;
-      }
-
-      const response = await api.users.updateProfile(updateData);
+      const response = await api.users.updateProfile({
+        password: formData.newPassword,
+        currentPassword: formData.currentPassword,
+      });
 
       if (response.ok) {
-        const updatedUser = await response.json();
-        setUser(updatedUser);
-        Alert.alert(t('success'), t('profile_updated'), [
+        Alert.alert(t('success'), t('password_changed'), [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
@@ -70,14 +58,14 @@ const EditProfileScreen = ({ navigation }) => {
         ]);
       } else {
         const error = await response.json();
-        if (error.message?.includes('Текущий пароль неверен') || error.message?.includes('incorrect') || error.message?.includes('required')) {
-          Alert.alert(t('error'), error.message || t('error_current_password_invalid'));
+        if (error.message?.includes('Текущий пароль неверен') || error.message?.includes('incorrect')) {
+          Alert.alert(t('error'), t('error_current_password_invalid'));
         } else {
-          Alert.alert(t('error'), error.message || t('error_update_profile'));
+          Alert.alert(t('error'), error.message || t('error_change_password'));
         }
       }
     } catch (error) {
-      console.error('Failed to update profile:', error);
+      console.error('Failed to change password:', error);
       Alert.alert(t('error'), t('error_network'));
     } finally {
       setLoading(false);
@@ -87,58 +75,63 @@ const EditProfileScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('edit_profile_title')}</Text>
+        <Text style={styles.headerTitle}>{t('change_password_title')}</Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('name_label')}</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.name}
-            onChangeText={(text) => setFormData({ ...formData, name: text })}
-            placeholder={t('enter_name')}
-            placeholderTextColor={COLORS.textLight}
-            editable={!loading}
-          />
+          <Text style={styles.label}>{t('current_password')}</Text>
+          <View style={styles.inputWithIcon}>
+            <TextInput
+              style={styles.inputWithIconText}
+              value={formData.currentPassword}
+              onChangeText={(text) => setFormData({ ...formData, currentPassword: text })}
+              placeholder={t('enter_current_password')}
+              placeholderTextColor={COLORS.textLight}
+              secureTextEntry={!showCurrentPassword}
+              editable={!loading}
+            />
+            <Pressable onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={styles.iconButton}>
+              {showCurrentPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('email_label_short')}</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.email}
-            onChangeText={(text) => setFormData({ ...formData, email: text })}
-            placeholder={t('enter_email')}
-            placeholderTextColor={COLORS.textLight}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!loading}
-          />
-          {needsPassword && (
-            <Text style={styles.hint}>{t('current_password_required')}</Text>
-          )}
+          <Text style={styles.label}>{t('new_password')}</Text>
+          <View style={styles.inputWithIcon}>
+            <TextInput
+              style={styles.inputWithIconText}
+              value={formData.newPassword}
+              onChangeText={(text) => setFormData({ ...formData, newPassword: text })}
+              placeholder={t('enter_new_password')}
+              placeholderTextColor={COLORS.textLight}
+              secureTextEntry={!showNewPassword}
+              editable={!loading}
+            />
+            <Pressable onPress={() => setShowNewPassword(!showNewPassword)} style={styles.iconButton}>
+              {showNewPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
+            </Pressable>
+          </View>
         </View>
 
-        {needsPassword && (
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('current_password')}</Text>
-            <View style={styles.inputWithIcon}>
-              <TextInput
-                style={styles.inputWithIconText}
-                value={formData.currentPassword}
-                onChangeText={(text) => setFormData({ ...formData, currentPassword: text })}
-                placeholder={t('enter_current_password')}
-                placeholderTextColor={COLORS.textLight}
-                secureTextEntry={!showCurrentPassword}
-                editable={!loading}
-              />
-              <Pressable onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={styles.iconButton}>
-                {showCurrentPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
-              </Pressable>
-            </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>{t('confirm_password')}</Text>
+          <View style={styles.inputWithIcon}>
+            <TextInput
+              style={styles.inputWithIconText}
+              value={formData.confirmPassword}
+              onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+              placeholder={t('enter_confirm_password')}
+              placeholderTextColor={COLORS.textLight}
+              secureTextEntry={!showConfirmPassword}
+              editable={!loading}
+            />
+            <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.iconButton}>
+              {showConfirmPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
+            </Pressable>
           </View>
-        )}
+        </View>
 
         <View style={styles.buttonGroup}>
           <Pressable
@@ -151,7 +144,7 @@ const EditProfileScreen = ({ navigation }) => {
           
           <Pressable
             style={[styles.button, styles.saveButton]}
-            onPress={handleSave}
+            onPress={handleChangePassword}
             disabled={loading}
           >
             {loading ? (
@@ -219,11 +212,6 @@ const styles = StyleSheet.create({
   iconButton: {
     paddingHorizontal: THEME.spacing.md,
   },
-  hint: {
-    fontSize: 12,
-    color: COLORS.accent,
-    marginTop: THEME.spacing.xs,
-  },
   buttonGroup: {
     flexDirection: 'row',
     gap: THEME.spacing.md,
@@ -256,4 +244,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EditProfileScreen;
+export default ChangePasswordScreen;

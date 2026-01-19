@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import Logo from '../components/Logo';
@@ -79,9 +80,9 @@ const RegisterScreen = ({ navigation }) => {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-            <Text style={styles.icon} onPress={() => setShowPassword(!showPassword)}>
-              {showPassword ? '👁️' : '👁️‍🗨️'}
-            </Text>
+            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.iconButton}>
+              {showPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
+            </Pressable>
           </View>
         </View>
 
@@ -94,9 +95,9 @@ const RegisterScreen = ({ navigation }) => {
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
             />
-            <Text style={styles.icon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-              {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
-            </Text>
+            <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.iconButton}>
+              {showConfirmPassword ? <Eye size={20} color={COLORS.textLight} /> : <EyeOff size={20} color={COLORS.textLight} />}
+            </Pressable>
           </View>
         </View>
 
@@ -179,8 +180,7 @@ const styles = StyleSheet.create({
     padding: THEME.spacing.md,
     fontSize: 16,
   },
-  icon: {
-    fontSize: 20,
+  iconButton: {
     paddingHorizontal: THEME.spacing.md,
   },
   link: {
