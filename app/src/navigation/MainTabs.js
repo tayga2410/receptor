@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import RecipesScreen from '../screens/RecipesScreen';
+import RecipeFormScreen from '../screens/RecipeFormScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import CalculatorScreen from '../screens/CalculatorScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -24,6 +25,52 @@ const TabIcon = ({ iconName, focused }) => (
     color={focused ? COLORS.accent : COLORS.textLight}
   />
 );
+
+const RecipesStack = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.surface,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        },
+        headerTitleStyle: {
+          color: COLORS.text,
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        headerRight: () => <LanguageSelector />,
+      }}
+    >
+      <Stack.Screen
+        name="RecipesList"
+        component={RecipesScreen}
+        options={{ title: t('recipes') }}
+      />
+      <Stack.Screen
+        name="RecipeForm"
+        component={RecipeFormScreen}
+        options={({ route, navigation }) => ({
+          title: route.params?.recipe ? t('edit') : t('recipes'),
+          headerRight: () =>
+            route.params?.recipe ? (
+              <TouchableOpacity
+                onPress={() => navigation.setParams({ showDeleteDialog: true })}
+                style={{ marginRight: 15 }}
+              >
+                <MaterialCommunityIcons name="delete" size={24} color={COLORS.error} />
+              </TouchableOpacity>
+            ) : null,
+        })}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const IngredientsStack = () => {
   const { t } = useTranslation();
@@ -145,8 +192,8 @@ const MainTabs = () => {
     >
       <Tab.Screen
         name="Recipes"
-        component={RecipesScreen}
-        options={() => ({ title: t('recipes') })}
+        component={RecipesStack}
+        options={{ title: t('recipes') }}
       />
       <Tab.Screen
         name="Ingredients"

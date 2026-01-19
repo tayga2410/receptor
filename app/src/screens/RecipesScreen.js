@@ -1,48 +1,161 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Text,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { api } from '../services/api';
+import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
 
 const RecipesScreen = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    // TODO: Загрузка данных с API
-    setLoading(false);
-  }, []);
+    loadRecipes();
 
-  const renderRecipe = ({ item }) => (
-    <Pressable
-      style={styles.recipeCard}
-      onPress={() => console.log('Recipe details:', item.id)}
-    >
-      <Text style={styles.recipeName}>{item.name}</Text>
-      <View style={styles.recipeStats}>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{t('cost_price')}:</Text>
-          <Text style={styles.statValue}>{item.costPrice} ₸</Text>
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadRecipes();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const loadRecipes = async () => {
+    try {
+      const response = await api.recipes.getAll();
+      const data = await response.json();
+      // Бэкенд возвращает { recipes: [], total, ... }
+      setRecipes(Array.isArray(data) ? data : (data.recipes || []));
+    } catch (error) {
+      console.error('Failed to load recipes:', error);
+      Alert.alert('Error', error.message || 'Failed to load recipes');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadRecipes();
+  };
+
+  const handleAddRecipe = () => {
+    navigation.navigate('RecipeForm');
+  };
+
+  const handleRecipePress = (recipe) => {
+    navigation.navigate('RecipeForm', { recipe });
+  };
+
+  const handleDeleteRecipe = (recipe) => {
+    Alert.alert(
+      t('delete'),
+      t('confirm_delete_recipe'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.recipes.delete(recipe.id);
+              if (response.ok) {
+                loadRecipes();
+              } else {
+                const error = await response.json();
+                Alert.alert('Error', error.message || 'Failed to delete recipe');
+              }
+            } catch (error) {
+              console.error('Failed to delete recipe:', error);
+              Alert.alert('Error', error.message || 'Network error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const calculateCostPrice = (recipe) => {
+    if (!recipe.ingredients || recipe.ingredients.length === 0) return 0;
+    return recipe.ingredients.reduce((total, ri) => {
+      const ingredientCost = (ri.ingredient?.pricePerUnit || 0) * ri.quantity;
+      return total + ingredientCost;
+    }, 0);
+  };
+
+  const calculateProfit = (recipe) => {
+    const costPrice = calculateCostPrice(recipe);
+    return recipe.salePrice - costPrice;
+  };
+
+  const renderRecipe = ({ item }) => {
+    const costPrice = calculateCostPrice(item);
+    const profit = calculateProfit(item);
+    const currencySymbol = getCurrencySymbol(item.currency);
+
+    return (
+      <Pressable
+        style={styles.recipeCard}
+        onPress={() => handleRecipePress(item)}
+      >
+        <View style={styles.recipeHeader}>
+          <Text style={styles.recipeName}>{item.name || t('unnamed_recipe')}</Text>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteRecipe(item)}
+          >
+            <MaterialCommunityIcons name="delete-outline" size={20} color={COLORS.error} />
+          </TouchableOpacity>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{t('sale_price')}:</Text>
-          <Text style={styles.statValue}>{item.salePrice} ₸</Text>
+
+        <View style={styles.recipeStats}>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>{t('cost_price')}:</Text>
+            <Text style={styles.statValue}>{costPrice.toFixed(2)} {currencySymbol}</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>{t('sale_price')}:</Text>
+            <Text style={styles.statValue}>{item.salePrice.toFixed(2)} {currencySymbol}</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>{t('profit')}:</Text>
+            <Text style={[styles.statValue, profit >= 0 ? styles.profitPositive : styles.profitNegative]}>
+              {profit.toFixed(2)} {currencySymbol}
+            </Text>
+          </View>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{t('margin')}:</Text>
-          <Text style={styles.statValue}>{item.marginPercent.toFixed(1)}%</Text>
-        </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{t('profit')}:</Text>
-          <Text style={styles.statValue}>{item.profit} ₸</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
+
+        {item.ingredients && item.ingredients.length > 0 && (
+          <View style={styles.ingredientsContainer}>
+            <Text style={styles.ingredientsTitle}>{t('ingredients')} ({item.ingredients.length}):</Text>
+            <Text style={styles.ingredientsPreview}>
+              {item.ingredients.map(ri => ri.ingredient?.name).join(', ')}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
+      <MaterialCommunityIcons name="silverware-fork-knife" size={64} color={COLORS.textLight} />
       <Text style={styles.emptyStateText}>{t('no_recipes')}</Text>
+      <TouchableOpacity style={styles.addFirstButton} onPress={handleAddRecipe}>
+        <Text style={styles.addFirstButtonText}>{t('add_first_recipe')}</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -62,7 +175,14 @@ const RecipesScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmptyState}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
       />
+      {recipes.length > 0 && (
+        <TouchableOpacity style={styles.fab} onPress={handleAddRecipe}>
+          <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -88,14 +208,24 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  recipeName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  recipeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: THEME.spacing.sm,
+  },
+  recipeName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  deleteButton: {
+    padding: THEME.spacing.xs,
   },
   recipeStats: {
     gap: THEME.spacing.xs,
+    marginBottom: THEME.spacing.sm,
   },
   stat: {
     flexDirection: 'row',
@@ -110,6 +240,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
+  profitPositive: {
+    color: COLORS.success,
+  },
+  profitNegative: {
+    color: COLORS.error,
+  },
+  ingredientsContainer: {
+    marginTop: THEME.spacing.sm,
+    paddingTop: THEME.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  ingredientsTitle: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: THEME.spacing.xs,
+  },
+  ingredientsPreview: {
+    fontSize: 13,
+    color: COLORS.text,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -120,6 +271,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textLight,
     textAlign: 'center',
+    marginTop: THEME.spacing.md,
+  },
+  addFirstButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingVertical: THEME.spacing.md,
+    borderRadius: THEME.roundness * 2,
+    marginTop: THEME.spacing.lg,
+  },
+  addFirstButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fab: {
+    position: 'absolute',
+    right: THEME.spacing.lg,
+    bottom: THEME.spacing.xl,
+    backgroundColor: COLORS.accent,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   loadingContainer: {
     flex: 1,
