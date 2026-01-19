@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, Pressable, Text, ScrollView } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import Logo from '../components/Logo';
@@ -7,20 +7,26 @@ import ErrorMessage from '../components/ErrorMessage';
 import useStore from '../store/useStore';
 
 const RegisterScreen = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t, language, changeLanguage } = useTranslation();
   const register = useStore((state) => state.register);
   const [username, setUsername] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const languages = [
+    { code: 'KZ', label: 'KZ', flag: '🇰🇿' },
+    { code: 'RU', label: 'RU', flag: '🇷🇺' },
+    { code: 'EN', label: 'EN', flag: '🇬🇧' },
+  ];
 
   const handleRegister = async () => {
     setError(null);
 
-    if (!username || !name || !email || !password || !confirmPassword) {
+    if (!username || !password || !confirmPassword) {
       setError(t('error_fill_all_fields'));
       return;
     }
@@ -31,7 +37,7 @@ const RegisterScreen = ({ navigation }) => {
     }
 
     setLoading(true);
-    const result = await register(username, name, email, password);
+    const result = await register(username, password);
     setLoading(false);
 
     if (!result.success) {
@@ -40,7 +46,7 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <View style={styles.container}>
       <ErrorMessage
         message={error}
         visible={!!error}
@@ -55,10 +61,9 @@ const RegisterScreen = ({ navigation }) => {
         <Text style={styles.title}>{t('register')}</Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('username')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="ваш логин"
+            placeholder={t('enter_username')}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -66,47 +71,33 @@ const RegisterScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('name')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t('name')}
-            value={name}
-            onChangeText={setName}
-          />
+          <View style={styles.inputWithIcon}>
+            <TextInput
+              style={styles.inputWithIconText}
+              placeholder={t('enter_password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <Text style={styles.icon} onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('email')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="example@mail.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('password')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('confirm_password')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
+          <View style={styles.inputWithIcon}>
+            <TextInput
+              style={styles.inputWithIconText}
+              placeholder={t('enter_confirm_password')}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <Text style={styles.icon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+            </Text>
+          </View>
         </View>
 
         <Pressable
@@ -118,13 +109,28 @@ const RegisterScreen = ({ navigation }) => {
         </Pressable>
 
         <View style={styles.loginContainer}>
-          <Text style={styles.loginText}>Уже есть аккаунт? </Text>
+          <Text style={styles.loginText}>{t('no_account')} </Text>
           <Pressable onPress={() => navigation.navigate('Login')}>
             <Text style={styles.link}>{t('login')}</Text>
           </Pressable>
         </View>
+
+        <View style={styles.languageSwitcher}>
+          {languages.map((lang) => (
+            <Pressable
+              key={lang.code}
+              style={[
+                styles.languageButton,
+                language === lang.code && styles.languageButtonActive,
+              ]}
+              onPress={() => changeLanguage(lang.code)}
+            >
+              <Text style={styles.languageButtonText}>{lang.flag} {lang.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -132,14 +138,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    padding: THEME.spacing.lg,
+    padding: THEME.spacing.md,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: THEME.spacing.xl,
-    marginBottom: THEME.spacing.lg,
+    marginTop: THEME.spacing.md,
+    marginBottom: THEME.spacing.md,
   },
   formContainer: {
     width: '100%',
@@ -149,16 +153,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: THEME.spacing.xl,
-  },
-  inputContainer: {
     marginBottom: THEME.spacing.md,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: THEME.spacing.xs,
+  inputContainer: {
+    marginBottom: THEME.spacing.sm,
   },
   input: {
     backgroundColor: COLORS.surface,
@@ -167,6 +165,23 @@ const styles = StyleSheet.create({
     borderRadius: THEME.roundness,
     padding: THEME.spacing.md,
     fontSize: 16,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: THEME.roundness,
+  },
+  inputWithIconText: {
+    flex: 1,
+    padding: THEME.spacing.md,
+    fontSize: 16,
+  },
+  icon: {
+    fontSize: 20,
+    paddingHorizontal: THEME.spacing.md,
   },
   link: {
     color: COLORS.accent,
@@ -179,8 +194,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.spacing.lg,
     borderRadius: THEME.roundness * 2,
     alignItems: 'center',
-    marginTop: THEME.spacing.lg,
-    marginBottom: THEME.spacing.lg,
+    marginTop: THEME.spacing.md,
+    marginBottom: THEME.spacing.md,
   },
   primaryButtonText: {
     fontSize: 16,
@@ -197,6 +212,29 @@ const styles = StyleSheet.create({
   loginText: {
     fontSize: 14,
     color: COLORS.textLight,
+  },
+  languageSwitcher: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: THEME.spacing.md,
+  },
+  languageButton: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: THEME.spacing.sm,
+    paddingHorizontal: THEME.spacing.md,
+    borderRadius: THEME.roundness,
+    marginHorizontal: THEME.spacing.xs,
+  },
+  languageButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  languageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
   },
 });
 

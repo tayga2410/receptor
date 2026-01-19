@@ -1,35 +1,17 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Text, FlatList, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 
-const mockIngredients = [
-  {
-    id: '1',
-    name: 'Сахар',
-    unit: 'kg',
-    pricePerUnit: 600,
-    currency: 'KZT',
-  },
-  {
-    id: '2',
-    name: 'Мука',
-    unit: 'kg',
-    pricePerUnit: 350,
-    currency: 'KZT',
-  },
-  {
-    id: '3',
-    name: 'Масло растительное',
-    unit: 'l',
-    pricePerUnit: 1200,
-    currency: 'KZT',
-  },
-];
-
 const IngredientsScreen = ({ navigation }) => {
   const { t } = useTranslation();
-  const [ingredients, setIngredients] = useState(mockIngredients);
+  const [ingredients, setIngredients] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // TODO: Загрузка данных с API
+    setLoading(false);
+  }, []);
 
   const renderIngredient = ({ item }) => (
     <Pressable
@@ -45,6 +27,20 @@ const IngredientsScreen = ({ navigation }) => {
     </Pressable>
   );
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateText}>{t('no_ingredients')}</Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -52,6 +48,7 @@ const IngredientsScreen = ({ navigation }) => {
         renderItem={renderIngredient}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmptyState}
       />
     </View>
   );
@@ -93,6 +90,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.text,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: THEME.spacing.xl * 2,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: COLORS.textLight,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

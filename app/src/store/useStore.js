@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TRANSLATIONS } from '../constants/translations';
 
 // Функция для перевода сообщений об ошибках
@@ -100,137 +102,152 @@ const getNetworkErrorMessage = (error, language = 'RU') => {
   return translateError('error_network', language);
 };
 
-const useStore = create((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  language: 'RU',
-  theme: 'light',
+const useStore = create(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      language: 'RU',
+      theme: 'light',
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
-  setToken: (token) => set({ token }),
-  setLanguage: (language) => set({ language }),
-  setTheme: (theme) => set({ theme }),
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setToken: (token) => set({ token }),
+      setLanguage: (language) => set({ language }),
+      setTheme: (theme) => set({ theme }),
 
-  login: async (username, password) => {
-    const { apiFetch } = require('../services/api');
-    const state = useStore.getState();
-    const language = state.language || 'RU';
+      login: async (username, password) => {
+        const { apiFetch } = require('../services/api');
+        const state = useStore.getState();
+        const language = state.language || 'RU';
 
-    try {
-      console.log('Attempting login with:', { username, password: '***' });
-      const response = await apiFetch('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-      });
+        try {
+          console.log('Attempting login with:', { username, password: '***' });
+          const response = await apiFetch('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password }),
+          });
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Failed to parse JSON response:', jsonError);
-        data = { message: 'Не удалось прочитать ответ сервера' };
-      }
-      
-      console.log('Login response:', JSON.stringify({ status: response.status, data }, null, 2));
+          let data;
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error('Failed to parse JSON response:', jsonError);
+            data = { message: 'Не удалось прочитать ответ сервера' };
+          }
+          
+          console.log('Login response:', JSON.stringify({ status: response.status, data }, null, 2));
 
-      if (response.ok) {
-        set({ user: data.user, token: data.token, isAuthenticated: true });
-        return { success: true };
-      }
+          if (response.ok) {
+            set({ user: data.user, token: data.token, isAuthenticated: true });
+            return { success: true };
+          }
 
-      // Детальная обработка ошибок валидации (400)
-      if (response.status === 400) {
-        const errorMessage = parseValidationError(data, language);
-        console.log('Error message to show:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
+          // Детальная обработка ошибок валидации (400)
+          if (response.status === 400) {
+            const errorMessage = parseValidationError(data, language);
+            console.log('Error message to show:', errorMessage);
+            return { success: false, error: errorMessage };
+          }
 
-      // Обработка ошибок авторизации (401)
-      if (response.status === 401) {
-        const errorMessage = translateError('error_invalid_credentials', language);
-        console.log('Error message to show:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
+          // Обработка ошибок авторизации (401)
+          if (response.status === 401) {
+            const errorMessage = translateError('error_invalid_credentials', language);
+            console.log('Error message to show:', errorMessage);
+            return { success: false, error: errorMessage };
+          }
 
-      // Обработка ошибок сервера (500)
-      if (response.status >= 500) {
-        const errorMessage = translateError('error_server', language);
-        console.log('Error message to show:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
+          // Обработка ошибок сервера (500)
+          if (response.status >= 500) {
+            const errorMessage = translateError('error_server', language);
+            console.log('Error message to show:', errorMessage);
+            return { success: false, error: errorMessage };
+          }
 
-      // Обработка других ошибок (403, 404, и т.д.)
-      const errorMessage = data?.message || translateError('error_login_failed', language);
-      console.log('Error message to show:', errorMessage);
-      return { success: false, error: errorMessage };
-    } catch (error) {
-      console.error('Login error:', error);
-      const errorMessage = getNetworkErrorMessage(error, language);
-      return { success: false, error: errorMessage };
+          // Обработка других ошибок (403, 404, и т.д.)
+          const errorMessage = data?.message || translateError('error_login_failed', language);
+          console.log('Error message to show:', errorMessage);
+          return { success: false, error: errorMessage };
+        } catch (error) {
+          console.error('Login error:', error);
+          const errorMessage = getNetworkErrorMessage(error, language);
+          return { success: false, error: errorMessage };
+        }
+      },
+
+      register: async (username, password) => {
+        const { apiFetch } = require('../services/api');
+        const state = useStore.getState();
+        const language = state.language || 'RU';
+
+        try {
+          console.log('Attempting registration with:', { username, password: '***' });
+          const response = await apiFetch('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ username, password }),
+          });
+
+          let data;
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error('Failed to parse JSON response:', jsonError);
+            data = { message: 'Не удалось прочитать ответ сервера' };
+          }
+          
+          console.log('Registration response:', JSON.stringify({ status: response.status, data }, null, 2));
+
+          if (response.ok) {
+            set({ user: data.user, token: data.token, isAuthenticated: true });
+            return { success: true };
+          }
+
+          // Детальная обработка ошибок валидации (400)
+          if (response.status === 400) {
+            const errorMessage = parseValidationError(data, language);
+            console.log('Error message to show:', errorMessage);
+            return { success: false, error: errorMessage };
+          }
+
+          // Обработка ошибок конфликта (409) - username уже существует
+          if (response.status === 409) {
+            const errorMessage = translateError('error_email_exists', language);
+            console.log('Error message to show:', errorMessage);
+            return { success: false, error: errorMessage };
+          }
+
+          // Обработка ошибок сервера (500)
+          if (response.status >= 500) {
+            const errorMessage = translateError('error_server', language);
+            console.log('Error message to show:', errorMessage);
+            return { success: false, error: errorMessage };
+          }
+
+          // Обработка других ошибок
+          const errorMessage = data?.message || translateError('error_registration_failed', language);
+          console.log('Error message to show:', errorMessage);
+          return { success: false, error: errorMessage };
+        } catch (error) {
+          console.error('Registration error:', error);
+          const errorMessage = getNetworkErrorMessage(error, language);
+          return { success: false, error: errorMessage };
+        }
+      },
+
+      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+    }),
+    {
+      name: 'app-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+        language: state.language,
+        theme: state.theme,
+      }),
     }
-  },
-
-  register: async (username, name, email, password) => {
-    const { apiFetch } = require('../services/api');
-    const state = useStore.getState();
-    const language = state.language || 'RU';
-
-    try {
-      console.log('Attempting registration with:', { username, name, email, password: '***' });
-      const response = await apiFetch('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, name, email, password }),
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Failed to parse JSON response:', jsonError);
-        data = { message: 'Не удалось прочитать ответ сервера' };
-      }
-      
-      console.log('Registration response:', JSON.stringify({ status: response.status, data }, null, 2));
-
-      if (response.ok) {
-        set({ user: data.user, token: data.token, isAuthenticated: true });
-        return { success: true };
-      }
-
-      // Детальная обработка ошибок валидации (400)
-      if (response.status === 400) {
-        const errorMessage = parseValidationError(data, language);
-        console.log('Error message to show:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
-
-      // Обработка ошибок конфликта (409) - email или username уже существует
-      if (response.status === 409) {
-        const errorMessage = translateError('error_email_exists', language);
-        console.log('Error message to show:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
-
-      // Обработка ошибок сервера (500)
-      if (response.status >= 500) {
-        const errorMessage = translateError('error_server', language);
-        console.log('Error message to show:', errorMessage);
-        return { success: false, error: errorMessage };
-      }
-
-      // Обработка других ошибок
-      const errorMessage = data?.message || translateError('error_registration_failed', language);
-      console.log('Error message to show:', errorMessage);
-      return { success: false, error: errorMessage };
-    } catch (error) {
-      console.error('Registration error:', error);
-      const errorMessage = getNetworkErrorMessage(error, language);
-      return { success: false, error: errorMessage };
-    }
-  },
-
-  logout: () => set({ user: null, token: null, isAuthenticated: false }),
-}));
+  )
+);
 
 export default useStore;

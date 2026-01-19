@@ -5,9 +5,7 @@ import { useTranslation } from '../contexts/TranslationContext';
 
 const CalculatorScreen = () => {
   const { t } = useTranslation();
-  const [ingredients, setIngredients] = useState([
-    { id: '1', name: 'Сахар', unit: 'kg', pricePerUnit: 600, quantity: 0.5 },
-  ]);
+  const [ingredients, setIngredients] = useState([]);
   const [newIngredient, setNewIngredient] = useState({
     name: '',
     unit: 'kg',

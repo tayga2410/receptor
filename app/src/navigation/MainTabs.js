@@ -1,7 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text } from 'react-native';
-import { COLORS } from '../theme/colors';
+import { View, Text, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import RecipesScreen from '../screens/RecipesScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
@@ -10,16 +11,19 @@ import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({ icon, label, focused }) => (
-  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-    <Text style={{ fontSize: 24 }}>{icon}</Text>
+const TabIcon = ({ iconName, label, focused }) => (
+  <View style={styles.tabIconContainer}>
+    <MaterialCommunityIcons
+      name={iconName}
+      size={24}
+      color={focused ? COLORS.accent : COLORS.textLight}
+    />
     <Text
-      style={{
-        fontSize: 12,
-        color: focused ? COLORS.accent : COLORS.textLight,
-        marginTop: 4,
-        fontWeight: focused ? '600' : '400',
-      }}
+      style={[
+        styles.tabLabel,
+        focused ? styles.tabLabelFocused : styles.tabLabelUnfocused,
+      ]}
+      numberOfLines={2}
     >
       {label}
     </Text>
@@ -33,34 +37,30 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused }) => {
-          let icon;
-          let label;
-
           if (route.name === 'Recipes') {
-            icon = '📝';
-            label = t('recipes');
+            return <TabIcon iconName="book-open-variant" label={t('recipes')} focused={focused} />;
           } else if (route.name === 'Ingredients') {
-            icon = '🥕';
-            label = t('ingredients');
+            return <TabIcon iconName="food-variant" label={t('ingredients')} focused={focused} />;
           } else if (route.name === 'Calculator') {
-            icon = '🧮';
-            label = t('calculator');
+            return <TabIcon iconName="calculator-variant" label={t('calculator')} focused={focused} />;
           } else if (route.name === 'Profile') {
-            icon = '👤';
-            label = t('profile');
+            return <TabIcon iconName="account" label={t('profile')} focused={focused} />;
           }
-
-          return <TabIcon icon={icon} label={label} focused={focused} />;
         },
+        tabBarLabel: () => null,
         tabBarActiveTintColor: COLORS.accent,
         tabBarInactiveTintColor: COLORS.textLight,
         tabBarStyle: {
           backgroundColor: COLORS.surface,
           borderTopWidth: 1,
           borderTopColor: COLORS.border,
-          height: 60,
+          height: 70,
           paddingBottom: 8,
           paddingTop: 8,
+          paddingHorizontal: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
         headerStyle: {
           backgroundColor: COLORS.surface,
@@ -99,5 +99,28 @@ const MainTabs = () => {
     </Tab.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  tabIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    gap: 4,
+  },
+  tabLabel: {
+    fontSize: 8,
+    marginTop: 0,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 10,
+  },
+  tabLabelFocused: {
+    color: COLORS.accent,
+    fontWeight: '600',
+  },
+  tabLabelUnfocused: {
+    color: COLORS.textLight,
+  },
+});
 
 export default MainTabs;

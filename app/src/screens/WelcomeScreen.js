@@ -8,9 +8,9 @@ const WelcomeScreen = ({ navigation }) => {
   const { t, changeLanguage } = useTranslation();
 
   const languages = [
-    { code: 'KZ', label: 'Қазақша' },
-    { code: 'RU', label: 'Русский' },
-    { code: 'EN', label: 'English' },
+    { code: 'KZ', label: 'Қазақша', flag: '🇰🇿' },
+    { code: 'RU', label: 'Русский', flag: '🇷🇺' },
+    { code: 'EN', label: 'English', flag: '🇬🇧' },
   ];
 
   const handleLanguageSelect = (lang) => {
@@ -26,16 +26,13 @@ const WelcomeScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.languageContainer}>
-        <Text style={styles.title}>{t('welcome_title')}</Text>
-        <Text style={styles.subtitle}>{t('select_language')}</Text>
-
         {languages.map((lang) => (
           <Pressable
             key={lang.code}
             style={styles.languageButton}
             onPress={() => handleLanguageSelect(lang.code)}
           >
-            <Text style={styles.languageButtonText}>{lang.label}</Text>
+            <Text style={styles.languageButtonText}>{lang.flag} {lang.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -62,19 +59,6 @@ const styles = StyleSheet.create({
   },
   languageContainer: {
     paddingBottom: THEME.spacing.xl,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: THEME.spacing.sm,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginBottom: THEME.spacing.xl,
   },
   languageButton: {
     backgroundColor: COLORS.primary,

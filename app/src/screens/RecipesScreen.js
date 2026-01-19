@@ -1,41 +1,17 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Text, FlatList, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 
-const mockRecipes = [
-  {
-    id: '1',
-    name: 'Борщ',
-    portions: 4,
-    costPrice: 1200,
-    salePrice: 2500,
-    marginPercent: 108.33,
-    profit: 1300,
-  },
-  {
-    id: '2',
-    name: 'Плов',
-    portions: 6,
-    costPrice: 1800,
-    salePrice: 4000,
-    marginPercent: 122.22,
-    profit: 2200,
-  },
-  {
-    id: '3',
-    name: 'Салат Цезарь',
-    portions: 2,
-    costPrice: 800,
-    salePrice: 1800,
-    marginPercent: 125,
-    profit: 1000,
-  },
-];
-
 const RecipesScreen = ({ navigation }) => {
   const { t } = useTranslation();
-  const [recipes, setRecipes] = useState(mockRecipes);
+  const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // TODO: Загрузка данных с API
+    setLoading(false);
+  }, []);
 
   const renderRecipe = ({ item }) => (
     <Pressable
@@ -45,24 +21,38 @@ const RecipesScreen = ({ navigation }) => {
       <Text style={styles.recipeName}>{item.name}</Text>
       <View style={styles.recipeStats}>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Себестоимость:</Text>
+          <Text style={styles.statLabel}>{t('cost_price')}:</Text>
           <Text style={styles.statValue}>{item.costPrice} ₸</Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Цена продажи:</Text>
+          <Text style={styles.statLabel}>{t('sale_price')}:</Text>
           <Text style={styles.statValue}>{item.salePrice} ₸</Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Маржа:</Text>
+          <Text style={styles.statLabel}>{t('margin')}:</Text>
           <Text style={styles.statValue}>{item.marginPercent.toFixed(1)}%</Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Прибыль:</Text>
+          <Text style={styles.statLabel}>{t('profit')}:</Text>
           <Text style={styles.statValue}>{item.profit} ₸</Text>
         </View>
       </View>
     </Pressable>
   );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateText}>{t('no_recipes')}</Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -71,6 +61,7 @@ const RecipesScreen = ({ navigation }) => {
         renderItem={renderRecipe}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmptyState}
       />
     </View>
   );
@@ -118,6 +109,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: THEME.spacing.xl * 2,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: COLORS.textLight,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

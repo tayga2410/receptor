@@ -14,7 +14,8 @@ const Logo = ({ size = 'medium' }) => {
   return (
     <View style={[styles.container, { width, height }]}>
       <View style={[styles.logoCircle, { width: width * 0.8, height: height * 0.8 }]}>
-        <Text style={[styles.logoText, { fontSize }]}>🍽️</Text>
+        <Text style={[styles.logoText, { fontSize }]}>🍳</Text>
+        <Text style={[styles.logoSubtext, { fontSize: fontSize * 0.3 }]}>🧮</Text>
       </View>
     </View>
   );
@@ -32,11 +33,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   logoText: {
+    fontWeight: 'bold',
+  },
+  logoSubtext: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
     fontWeight: 'bold',
   },
 });

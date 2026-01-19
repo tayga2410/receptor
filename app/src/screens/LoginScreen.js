@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, Pressable, Text, ScrollView } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import Logo from '../components/Logo';
@@ -7,12 +7,18 @@ import ErrorMessage from '../components/ErrorMessage';
 import useStore from '../store/useStore';
 
 const LoginScreen = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t, language, changeLanguage } = useTranslation();
   const login = useStore((state) => state.login);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const languages = [
+    { code: 'KZ', label: 'KZ', flag: '🇰🇿' },
+    { code: 'RU', label: 'RU', flag: '🇷🇺' },
+    { code: 'EN', label: 'EN', flag: '🇬🇧' },
+  ];
 
   const handleLogin = async () => {
     setError(null);
@@ -37,7 +43,7 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <View style={styles.container}>
       <ErrorMessage
         message={error}
         visible={!!error}
@@ -52,10 +58,9 @@ const LoginScreen = ({ navigation }) => {
         <Text style={styles.title}>{t('login')}</Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('username')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="ваш логин"
+            placeholder={t('enter_username')}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -63,10 +68,9 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('password')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="••••••••"
+            placeholder={t('enter_password')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -100,13 +104,28 @@ const LoginScreen = ({ navigation }) => {
         </Pressable>
 
         <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Нет аккаунта? </Text>
+          <Text style={styles.registerText}>{t('no_account')} </Text>
           <Pressable onPress={() => navigation.navigate('Register')}>
             <Text style={styles.link}>{t('register')}</Text>
           </Pressable>
         </View>
+
+        <View style={styles.languageSwitcher}>
+          {languages.map((lang) => (
+            <Pressable
+              key={lang.code}
+              style={[
+                styles.languageButton,
+                language === lang.code && styles.languageButtonActive,
+              ]}
+              onPress={() => changeLanguage(lang.code)}
+            >
+              <Text style={styles.languageButtonText}>{lang.flag} {lang.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -114,14 +133,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    padding: THEME.spacing.lg,
+    padding: THEME.spacing.md,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: THEME.spacing.xl,
-    marginBottom: THEME.spacing.xl,
+    marginTop: THEME.spacing.md,
+    marginBottom: THEME.spacing.md,
   },
   formContainer: {
     width: '100%',
@@ -131,16 +148,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: THEME.spacing.xl,
-  },
-  inputContainer: {
     marginBottom: THEME.spacing.md,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: THEME.spacing.xs,
+  inputContainer: {
+    marginBottom: THEME.spacing.sm,
   },
   input: {
     backgroundColor: COLORS.surface,
@@ -152,7 +163,7 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignItems: 'flex-end',
-    marginBottom: THEME.spacing.lg,
+    marginBottom: THEME.spacing.md,
   },
   link: {
     color: COLORS.accent,
@@ -165,7 +176,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.spacing.lg,
     borderRadius: THEME.roundness * 2,
     alignItems: 'center',
-    marginBottom: THEME.spacing.lg,
+    marginBottom: THEME.spacing.md,
   },
   primaryButtonText: {
     fontSize: 16,
@@ -178,7 +189,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: THEME.spacing.lg,
+    marginVertical: THEME.spacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -198,7 +209,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.spacing.lg,
     borderRadius: THEME.roundness * 2,
     alignItems: 'center',
-    marginBottom: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
   },
   socialButtonText: {
     fontSize: 16,
@@ -208,11 +219,34 @@ const styles = StyleSheet.create({
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: THEME.spacing.lg,
+    marginTop: THEME.spacing.md,
   },
   registerText: {
     fontSize: 14,
     color: COLORS.textLight,
+  },
+  languageSwitcher: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: THEME.spacing.md,
+  },
+  languageButton: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: THEME.spacing.sm,
+    paddingHorizontal: THEME.spacing.md,
+    borderRadius: THEME.roundness,
+    marginHorizontal: THEME.spacing.xs,
+  },
+  languageButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  languageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
   },
 });
 

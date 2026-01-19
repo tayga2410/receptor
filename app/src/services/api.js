@@ -1,9 +1,60 @@
 import { API_BASE_URL } from '../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import useStore from '../store/useStore';
+
+const TOKEN_STORAGE_KEY = '@app_token';
 
 let token = null;
 
+// Инициализация токена из AsyncStorage
+const initializeToken = async () => {
+  try {
+    const savedToken = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+    if (savedToken) {
+      token = savedToken;
+    }
+  } catch (error) {
+    console.error('Failed to load token from storage:', error);
+  }
+};
+
+// Запускаем инициализацию
+initializeToken();
+
+// Подписываемся на изменения токена в store
+let unsubscribe = null;
+const subscribeToTokenChanges = () => {
+  if (unsubscribe) return;
+  
+  unsubscribe = useStore.subscribe(
+    (state) => state.token,
+    (newToken) => {
+      token = newToken;
+      if (newToken) {
+        AsyncStorage.setItem(TOKEN_STORAGE_KEY, newToken).catch((error) => {
+          console.error('Failed to save token to storage:', error);
+        });
+      } else {
+        AsyncStorage.removeItem(TOKEN_STORAGE_KEY).catch((error) => {
+          console.error('Failed to remove token from storage:', error);
+        });
+      }
+    }
+  );
+};
+
+// Запускаем подписку при первом вызове
+let subscriptionInitialized = false;
+const ensureSubscription = () => {
+  if (!subscriptionInitialized) {
+    subscribeToTokenChanges();
+    subscriptionInitialized = true;
+  }
+};
+
 export const setAuthToken = (newToken) => {
   token = newToken;
+  ensureSubscription();
 };
 
 // Функция для создания запроса с таймаутом
