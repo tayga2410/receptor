@@ -11,7 +11,7 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleLogout = () => {
     logout();
-    navigation.navigate('Welcome');
+    navigation.navigate('Auth');
   };
 
   return (

@@ -8,9 +8,9 @@ const WelcomeScreen = ({ navigation }) => {
   const { t, changeLanguage } = useTranslation();
 
   const languages = [
-    { code: 'KZ', label: 'Қазақша', flag: '🇰🇿' },
-    { code: 'RU', label: 'Русский', flag: '🇷🇺' },
-    { code: 'EN', label: 'English', flag: '🇬🇧' },
+    { code: 'KZ', label: 'KZ' },
+    { code: 'RU', label: 'RU' },
+    { code: 'EN', label: 'EN' },
   ];
 
   const handleLanguageSelect = (lang) => {
@@ -32,7 +32,7 @@ const WelcomeScreen = ({ navigation }) => {
             style={styles.languageButton}
             onPress={() => handleLanguageSelect(lang.code)}
           >
-            <Text style={styles.languageButtonText}>{lang.flag} {lang.label}</Text>
+            <Text style={styles.languageButtonText}>{lang.label}</Text>
           </Pressable>
         ))}
       </View>

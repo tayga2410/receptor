@@ -8,26 +8,16 @@ import RecipesScreen from '../screens/RecipesScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import CalculatorScreen from '../screens/CalculatorScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import LanguageSelector from '../components/LanguageSelector';
 
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({ iconName, label, focused }) => (
-  <View style={styles.tabIconContainer}>
-    <MaterialCommunityIcons
-      name={iconName}
-      size={24}
-      color={focused ? COLORS.accent : COLORS.textLight}
-    />
-    <Text
-      style={[
-        styles.tabLabel,
-        focused ? styles.tabLabelFocused : styles.tabLabelUnfocused,
-      ]}
-      numberOfLines={2}
-    >
-      {label}
-    </Text>
-  </View>
+const TabIcon = ({ iconName, focused }) => (
+  <MaterialCommunityIcons
+    name={iconName}
+    size={28}
+    color={focused ? COLORS.accent : COLORS.textLight}
+  />
 );
 
 const MainTabs = () => {
@@ -38,13 +28,13 @@ const MainTabs = () => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused }) => {
           if (route.name === 'Recipes') {
-            return <TabIcon iconName="book-open-variant" label={t('recipes')} focused={focused} />;
+            return <TabIcon iconName="book-open-variant" focused={focused} />;
           } else if (route.name === 'Ingredients') {
-            return <TabIcon iconName="food-variant" label={t('ingredients')} focused={focused} />;
+            return <TabIcon iconName="food-variant" focused={focused} />;
           } else if (route.name === 'Calculator') {
-            return <TabIcon iconName="calculator-variant" label={t('calculator')} focused={focused} />;
+            return <TabIcon iconName="calculator-variant" focused={focused} />;
           } else if (route.name === 'Profile') {
-            return <TabIcon iconName="account" label={t('profile')} focused={focused} />;
+            return <TabIcon iconName="account" focused={focused} />;
           }
         },
         tabBarLabel: () => null,
@@ -54,10 +44,7 @@ const MainTabs = () => {
           backgroundColor: COLORS.surface,
           borderTopWidth: 1,
           borderTopColor: COLORS.border,
-          height: 70,
-          paddingBottom: 8,
-          paddingTop: 8,
-          paddingHorizontal: 4,
+          height: 56,
         },
         tabBarItemStyle: {
           paddingVertical: 4,
@@ -74,6 +61,7 @@ const MainTabs = () => {
           fontWeight: 'bold',
           fontSize: 20,
         },
+        headerRight: () => <LanguageSelector />,
       })}
     >
       <Tab.Screen
@@ -100,27 +88,6 @@ const MainTabs = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  tabIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    gap: 4,
-  },
-  tabLabel: {
-    fontSize: 8,
-    marginTop: 0,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 10,
-  },
-  tabLabelFocused: {
-    color: COLORS.accent,
-    fontWeight: '600',
-  },
-  tabLabelUnfocused: {
-    color: COLORS.textLight,
-  },
-});
+const styles = StyleSheet.create({});
 
 export default MainTabs;
