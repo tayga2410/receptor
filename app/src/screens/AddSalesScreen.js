@@ -103,38 +103,20 @@ const AddSalesScreen = ({ route, navigation }) => {
   };
 
   const renderRecipe = ({ item }) => {
-    const profitPerPortion = item.salePrice - (item.costPrice || 0);
     const currencySymbol = getCurrencySymbol(item.currency);
+    const quantity = parseFloat(selectedRecipes[item.id]) || 0;
+    const totalPrice = quantity * item.salePrice;
 
     return (
       <View style={styles.recipeCard}>
         <View style={styles.recipeHeader}>
-          <View style={styles.recipeInfo}>
-            <Text style={styles.recipeName}>{item.name || t('unnamed_recipe')}</Text>
+          <Text style={styles.recipeName}>{item.name || t('unnamed_recipe')}</Text>
+          <View style={styles.recipePriceContainer}>
             <Text style={styles.recipePrice}>
-              {item.salePrice.toFixed(2)} {currencySymbol}
+              {totalPrice.toFixed(2)} {currencySymbol}
             </Text>
-          </View>
-        </View>
-
-        <View style={styles.recipeDetails}>
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="information-outline" size={16} color={COLORS.textLight} />
-            <Text style={styles.detailText}>
-              {t('cost_price')}: {(item.costPrice || 0).toFixed(2)} {currencySymbol}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons
-              name={profitPerPortion >= 0 ? "trending-up" : "trending-down"}
-              size={16}
-              color={profitPerPortion >= 0 ? COLORS.success : COLORS.error}
-            />
-            <Text style={[
-              styles.detailText,
-              profitPerPortion >= 0 ? styles.profitPositive : styles.profitNegative
-            ]}>
-              {t('profit')}: {profitPerPortion.toFixed(2)} {currencySymbol}
+            <Text style={styles.recipePricePerUnit}>
+              {item.salePrice.toFixed(2)} {currencySymbol} / {t('pcs')}
             </Text>
           </View>
         </View>
@@ -265,12 +247,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   recipeHeader: {
-    marginBottom: THEME.spacing.sm,
-  },
-  recipeInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: THEME.spacing.sm,
+  },
+  recipePriceContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
   },
   recipeName: {
     fontSize: 16,
@@ -282,6 +266,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.accent,
+  },
+  recipePricePerUnit: {
+    fontSize: 12,
+    color: COLORS.textLight,
   },
   recipeDetails: {
     gap: THEME.spacing.xs,

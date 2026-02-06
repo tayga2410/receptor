@@ -198,7 +198,23 @@ export class SalesService {
     const start = startDate || new Date(Math.min(...records.map(r => r.date.getTime()), Date.now()));
     const end = endDate || new Date(Math.max(...records.map(r => r.date.getTime()), Date.now()));
     const daysInPeriod = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-    const dailyExpenses = totalMonthlyExpenses / 30;
+
+    // Get days in current month for daily expenses calculation
+    const now = new Date();
+    const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dailyExpenses = totalMonthlyExpenses / daysInCurrentMonth;
+
+    // Debug log
+    console.log('=== ANALYTICS DEBUG ===');
+    console.log('Monthly expenses:', totalMonthlyExpenses);
+    console.log('Days in current month:', daysInCurrentMonth);
+    console.log('Daily expenses:', dailyExpenses);
+    console.log('Period start:', start.toISOString());
+    console.log('Period end:', end.toISOString());
+    console.log('Hours difference:', (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+    console.log('Days in period:', daysInPeriod);
+    console.log('Period expenses total:', dailyExpenses * daysInPeriod);
+    console.log('=====================');
 
     const netProfit = totalProfit - (dailyExpenses * daysInPeriod);
 

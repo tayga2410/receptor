@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   StyleSheet,
@@ -29,11 +30,15 @@ const SalesDayScreen = ({ route, navigation }) => {
   const { t, language } = useTranslation();
   const { date } = route.params;
   const [salesData, setSalesData] = useState(null);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSalesForDay();
-  }, [date]);
+  useFocusEffect(
+    useCallback(() => {
+      loadSalesForDay();
+      loadExpenses();
+    }, [date])
+  );
 
   const loadSalesForDay = async () => {
     try {
@@ -48,6 +53,27 @@ const SalesDayScreen = ({ route, navigation }) => {
       setLoading(false);
     }
   };
+
+  const loadExpenses = async () => {
+    try {
+      const response = await api.expenses.getAll();
+      const data = await response.json();
+      setExpenses(data);
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+    }
+  };
+
+  const getDaysInMonth = (dateString) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    return new Date(year, month, 0).getDate();
+  };
+
+  const dailyExpenses = expenses.length > 0
+    ? expenses.reduce((sum, exp) => sum + exp.amount, 0) / getDaysInMonth(date)
+    : 0;
 
   const handleDeleteSale = async (saleId) => {
     Alert.alert(
@@ -85,7 +111,7 @@ const SalesDayScreen = ({ route, navigation }) => {
       <View style={styles.saleCard}>
         <View style={styles.saleHeader}>
           <Text style={styles.recipeName}>{item.recipeName || t('unnamed_recipe')}</Text>
-          <Text style={styles.quantity}>{item.quantity} {t('pcs')}</Text>
+          <Text style={styles.quantity}>{t('sold')}: {item.quantity} {t('pcs')}</Text>
         </View>
 
         <View style={styles.saleDetails}>
@@ -139,26 +165,43 @@ const SalesDayScreen = ({ route, navigation }) => {
 
       {hasSales ? (
         <>
-          <View style={styles.summary}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>{t('total_revenue')}</Text>
-              <Text style={styles.summaryValue}>
-                {salesData.totalRevenue.toFixed(2)}
-              </Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCol}>
+                <Text style={styles.summaryLabel}>{t('total_revenue')}</Text>
+                <Text style={styles.summaryValue}>{salesData.totalRevenue.toFixed(2)}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryCol}>
+                <Text style={styles.summaryLabel}>{t('total_cost')}</Text>
+                <Text style={styles.summaryValue}>{salesData.totalCost.toFixed(2)}</Text>
+              </View>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>{t('total_cost')}</Text>
-              <Text style={styles.summaryValue}>
-                {salesData.totalCost.toFixed(2)}
-              </Text>
+            <View style={styles.summaryDividerLine} />
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCol}>
+                <Text style={styles.summaryLabel}>{t('daily_expenses')}</Text>
+                <Text style={[styles.summaryValue, styles.expensesValue]}>{dailyExpenses.toFixed(2)}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryCol}>
+                <Text style={styles.summaryLabel}>{t('total_profit')}</Text>
+                <Text style={[
+                  styles.summaryValue,
+                  salesData.totalProfit >= 0 ? styles.profitPositive : styles.profitNegative
+                ]}>
+                  {salesData.totalProfit.toFixed(2)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>{t('total_profit')}</Text>
+            <View style={[styles.summaryDividerLine, styles.netProfitDivider]} />
+            <View style={styles.netProfitRow}>
+              <Text style={styles.netProfitLabel}>{t('net_profit')}</Text>
               <Text style={[
-                styles.summaryValue,
-                salesData.totalProfit >= 0 ? styles.profitPositive : styles.profitNegative
+                styles.netProfitValue,
+                (salesData.totalProfit - dailyExpenses) >= 0 ? styles.profitPositive : styles.profitNegative
               ]}>
-                {salesData.totalProfit.toFixed(2)}
+                {(salesData.totalProfit - dailyExpenses).toFixed(2)}
               </Text>
             </View>
           </View>
@@ -218,6 +261,61 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     textAlign: 'center',
   },
+  summaryCard: {
+    margin: THEME.spacing.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: THEME.roundness,
+    padding: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginBottom: 2,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: COLORS.border,
+    marginHorizontal: THEME.spacing.sm,
+  },
+  summaryDividerLine: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: THEME.spacing.sm,
+  },
+  netProfitDivider: {
+    marginTop: THEME.spacing.sm,
+  },
+  netProfitRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: THEME.spacing.xs,
+  },
+  netProfitLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  netProfitValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
   summary: {
     flexDirection: 'row',
     padding: THEME.spacing.md,
@@ -230,21 +328,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  summaryLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginBottom: THEME.spacing.xs,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
   profitPositive: {
     color: COLORS.success,
   },
   profitNegative: {
     color: COLORS.error,
+  },
+  expensesValue: {
+    color: COLORS.warning || '#FF9800',
   },
   listContent: {
     padding: THEME.spacing.md,

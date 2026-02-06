@@ -17,6 +17,7 @@
     "date-fns": "^4.1.0",
     "expo": "~54.0.31",
     "expo-status-bar": "~3.0.9",
+    "lodash": "^4.17.23",
     "lucide-react": "^0.562.0",
     "lucide-react-native": "^0.562.0",
     "react": "19.1.0",

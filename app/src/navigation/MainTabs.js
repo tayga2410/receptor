@@ -12,6 +12,7 @@ import SalesCalendarScreen from '../screens/SalesCalendarScreen';
 import SalesDayScreen from '../screens/SalesDayScreen';
 import AddSalesScreen from '../screens/AddSalesScreen';
 import SalesAnalyticsScreen from '../screens/SalesAnalyticsScreen';
+import ExpensesScreen from '../screens/ExpensesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
@@ -166,6 +167,36 @@ const SalesStack = () => {
   );
 };
 
+const ExpensesStack = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.surface,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        },
+        headerTitleStyle: {
+          color: COLORS.text,
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        headerRight: () => <LanguageSelector />,
+      }}
+    >
+      <Stack.Screen
+        name="ExpensesScreen"
+        component={ExpensesScreen}
+        options={{ title: t('expenses') }}
+      />
+    </Stack.Navigator>
+  );
+};
+
 const ProfileStack = () => {
   const { t } = useTranslation();
 
@@ -219,6 +250,8 @@ const MainTabs = () => {
             return <TabIcon iconName="food-variant" focused={focused} />;
           } else if (route.name === 'Sales') {
             return <TabIcon iconName="chart-bar" focused={focused} />;
+          } else if (route.name === 'Expenses') {
+            return <TabIcon iconName="receipt" focused={focused} />;
           } else if (route.name === 'Profile') {
             return <TabIcon iconName="account" focused={focused} />;
           }
@@ -239,14 +272,19 @@ const MainTabs = () => {
       })}
     >
       <Tab.Screen
+        name="Ingredients"
+        component={IngredientsStack}
+        options={{ title: t('ingredients') }}
+      />
+      <Tab.Screen
         name="Recipes"
         component={RecipesStack}
         options={{ title: t('recipes') }}
       />
       <Tab.Screen
-        name="Ingredients"
-        component={IngredientsStack}
-        options={{ title: t('ingredients') }}
+        name="Expenses"
+        component={ExpensesStack}
+        options={{ title: t('expenses') }}
       />
       <Tab.Screen
         name="Sales"

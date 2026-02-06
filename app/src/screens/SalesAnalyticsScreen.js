@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { format, subDays, subMonths } from 'date-fns';
+import { format, startOfMonth, startOfQuarter, subMonths } from 'date-fns';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
@@ -31,24 +31,41 @@ const SalesAnalyticsScreen = () => {
       setLoading(true);
       const now = new Date();
       let startDate;
+      let endDate;
 
       switch (periodType) {
-        case 'week':
-          startDate = subDays(now, 7);
-          break;
         case 'month':
-          startDate = subMonths(now, 1);
+          startDate = startOfMonth(now);
+          // End of current month
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           break;
         case 'quarter':
-          startDate = subMonths(now, 3);
+          startDate = startOfQuarter(now);
+          // End of current quarter
+          const quarterEndMonth = Math.floor(now.getMonth() / 3) * 3 + 3;
+          endDate = new Date(now.getFullYear(), quarterEndMonth, 0);
+          break;
+        case 'halfYear':
+          startDate = subMonths(now, 6);
+          endDate = now;
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          // End of current year
+          endDate = new Date(now.getFullYear(), 12, 0);
           break;
         default:
-          startDate = subDays(now, 7);
+          startDate = startOfMonth(now);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       }
+
+      // Set start of day and end of day to avoid timezone issues
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
 
       const response = await api.sales.getAnalytics(
         startDate.toISOString(),
-        now.toISOString()
+        endDate.toISOString()
       );
       const data = await response.json();
       setAnalytics(data);
@@ -72,7 +89,7 @@ const SalesAnalyticsScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.periodSelector}>
-        {['week', 'month', 'quarter'].map((period) => (
+        {['month', 'quarter', 'halfYear', 'year'].map((period) => (
           <TouchableOpacity
             key={period}
             style={[
@@ -93,67 +110,44 @@ const SalesAnalyticsScreen = () => {
         ))}
       </View>
 
-      <View style={styles.summarySection}>
-        <View style={styles.summaryCard}>
-          <MaterialCommunityIcons name="cash" size={24} color={COLORS.success} />
-          <Text style={styles.summaryLabel}>{t('total_revenue')}</Text>
-          <Text style={styles.summaryValue}>
-            {analytics?.revenue?.toFixed(2) || '0.00'} {currencySymbol}
-          </Text>
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{t('total_revenue')}</Text>
+            <Text style={styles.summaryValue}>{analytics?.revenue?.toFixed(2) || '0.00'}</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{t('total_cost')}</Text>
+            <Text style={styles.summaryValue}>{analytics?.cost?.toFixed(2) || '0.00'}</Text>
+          </View>
         </View>
-
-        <View style={styles.summaryCard}>
-          <MaterialCommunityIcons name="coin" size={24} color={COLORS.error} />
-          <Text style={styles.summaryLabel}>{t('total_cost')}</Text>
-          <Text style={styles.summaryValue}>
-            {analytics?.cost?.toFixed(2) || '0.00'} {currencySymbol}
-          </Text>
+        <View style={styles.summaryDividerLine} />
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{t('expenses_this_period')}</Text>
+            <Text style={[styles.summaryValue, styles.expensesValue]}>{analytics?.expenses?.periodTotal?.toFixed(2) || '0.00'}</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{t('total_profit')}</Text>
+            <Text style={[
+              styles.summaryValue,
+              (analytics?.profit || 0) >= 0 ? styles.profitPositive : styles.profitNegative
+            ]}>
+              {analytics?.profit?.toFixed(2) || '0.00'}
+            </Text>
+          </View>
         </View>
-
-        <View style={styles.summaryCard}>
-          <MaterialCommunityIcons name="trending-up" size={24} color={COLORS.accent} />
-          <Text style={styles.summaryLabel}>{t('total_profit')}</Text>
+        <View style={[styles.summaryDividerLine, styles.netProfitDivider]} />
+        <View style={styles.netProfitRow}>
+          <Text style={styles.netProfitLabel}>{t('net_profit')}</Text>
           <Text style={[
-            styles.summaryValue,
-            (analytics?.profit || 0) >= 0 ? styles.profitPositive : styles.profitNegative
-          ]}>
-            {analytics?.profit?.toFixed(2) || '0.00'} {currencySymbol}
-          </Text>
-        </View>
-
-        <View style={styles.summaryCard}>
-          <MaterialCommunityIcons name="wallet" size={24} color={COLORS.textLight} />
-          <Text style={styles.summaryLabel}>{t('net_profit')}</Text>
-          <Text style={[
-            styles.summaryValue,
+            styles.netProfitValue,
             (analytics?.netProfit || 0) >= 0 ? styles.profitPositive : styles.profitNegative
           ]}>
-            {analytics?.netProfit?.toFixed(2) || '0.00'} {currencySymbol}
+            {analytics?.netProfit?.toFixed(2) || '0.00'}
           </Text>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('expenses')}</Text>
-        <View style={styles.expensesCard}>
-          <View style={styles.expenseRow}>
-            <Text style={styles.expenseLabel}>{t('monthly_expenses')}</Text>
-            <Text style={styles.expenseValue}>
-              {analytics?.expenses?.monthly?.toFixed(2) || '0.00'} {currencySymbol}
-            </Text>
-          </View>
-          <View style={styles.expenseRow}>
-            <Text style={styles.expenseLabel}>{t('daily_expenses')}</Text>
-            <Text style={styles.expenseValue}>
-              {analytics?.expenses?.daily?.toFixed(2) || '0.00'} {currencySymbol}
-            </Text>
-          </View>
-          <View style={[styles.expenseRow, styles.expenseRowTotal]}>
-            <Text style={styles.expenseLabelTotal}>{t('period_expenses')}</Text>
-            <Text style={styles.expenseValueTotal}>
-              {analytics?.expenses?.periodTotal?.toFixed(2) || '0.00'} {currencySymbol}
-            </Text>
-          </View>
         </View>
       </View>
 
@@ -168,7 +162,7 @@ const SalesAnalyticsScreen = () => {
               </View>
               <View style={styles.dishStats}>
                 <View style={styles.dishStat}>
-                  <Text style={styles.dishStatLabel}>{t('quantity')}</Text>
+                  <Text style={styles.dishStatLabel}>{t('sold')}</Text>
                   <Text style={styles.dishStatValue}>{dish.quantity}</Text>
                 </View>
                 <View style={styles.dishStat}>
@@ -219,12 +213,67 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
   },
   periodButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.text,
   },
   periodButtonTextActive: {
     color: COLORS.white,
     fontWeight: '600',
+  },
+  summaryCard: {
+    margin: THEME.spacing.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: THEME.roundness,
+    padding: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginBottom: 2,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: COLORS.border,
+    marginHorizontal: THEME.spacing.sm,
+  },
+  summaryDividerLine: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: THEME.spacing.sm,
+  },
+  netProfitDivider: {
+    marginTop: THEME.spacing.sm,
+  },
+  netProfitRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: THEME.spacing.xs,
+  },
+  netProfitLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  netProfitValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   summarySection: {
     flexDirection: 'row',
@@ -232,31 +281,14 @@ const styles = StyleSheet.create({
     padding: THEME.spacing.md,
     gap: THEME.spacing.md,
   },
-  summaryCard: {
-    width: 172,
-    backgroundColor: COLORS.surface,
-    borderRadius: THEME.roundness,
-    padding: THEME.spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: THEME.spacing.xs,
-    marginBottom: THEME.spacing.xs,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
   profitPositive: {
     color: COLORS.success,
   },
   profitNegative: {
     color: COLORS.error,
+  },
+  expensesValue: {
+    color: COLORS.warning || '#FF9800',
   },
   section: {
     padding: THEME.spacing.md,
@@ -268,45 +300,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: THEME.spacing.md,
-  },
-  expensesCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: THEME.roundness,
-    padding: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  expenseRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: THEME.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  expenseRowTotal: {
-    borderBottomWidth: 0,
-    paddingTop: THEME.spacing.md,
-    marginTop: THEME.spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  expenseLabel: {
-    fontSize: 14,
-    color: COLORS.textLight,
-  },
-  expenseLabelTotal: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  expenseValue: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  expenseValueTotal: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.error,
   },
   dishCard: {
     backgroundColor: COLORS.surface,

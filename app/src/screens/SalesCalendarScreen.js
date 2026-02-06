@@ -1,21 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { format } from 'date-fns';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
+import useStore from '../store/useStore';
+import { getCurrencySymbol } from '../utils/currency';
 
 const SalesCalendarScreen = ({ navigation }) => {
   const { t } = useTranslation();
+  const user = useStore((state) => state.user);
   const [markedDates, setMarkedDates] = useState({});
-  const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [todayData, setTodayData] = useState(null);
+  const [expenses, setExpenses] = useState([]);
 
-  useEffect(() => {
-    loadCalendarData();
-  }, [currentMonth]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCalendarData();
+      loadTodayData();
+      loadExpenses();
+    }, [currentMonth])
+  );
 
   const loadCalendarData = async () => {
     try {
@@ -27,6 +37,8 @@ const SalesCalendarScreen = ({ navigation }) => {
       const data = await response.json();
 
       const formatted = {};
+      const today = format(new Date(), 'yyyy-MM-dd');
+
       for (const [date, info] of Object.entries(data)) {
         formatted[date] = {
           marked: true,
@@ -34,6 +46,13 @@ const SalesCalendarScreen = ({ navigation }) => {
           ...info,
         };
       }
+
+      // Подсветка сегодняшнего дня
+      formatted[today] = {
+        ...formatted[today],
+        selected: true,
+        selectedColor: COLORS.accent,
+      };
 
       setMarkedDates(formatted);
     } catch (error) {
@@ -44,21 +63,59 @@ const SalesCalendarScreen = ({ navigation }) => {
     }
   };
 
+  const loadTodayData = async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const response = await api.sales.getByDate(today);
+      const data = await response.json();
+      setTodayData(data);
+    } catch (error) {
+      console.error('Failed to load today data:', error);
+    }
+  };
+
+  const loadExpenses = async () => {
+    try {
+      const response = await api.expenses.getAll();
+      const data = await response.json();
+      setExpenses(data);
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+    }
+  };
+
+  const getDaysInMonth = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    return new Date(year, month, 0).getDate();
+  };
+
+  const getMonthNames = () => [
+    t('january'), t('february'), t('march'), t('april'),
+    t('may'), t('june'), t('july'), t('august'),
+    t('september'), t('october'), t('november'), t('december')
+  ];
+
+  const getDayNames = () => [
+    t('sun'), t('mon'), t('tue'), t('wed'),
+    t('thu'), t('fri'), t('sat')
+  ];
+
+  const dailyExpenses = expenses.length > 0
+    ? expenses.reduce((sum, exp) => sum + exp.amount, 0) / getDaysInMonth(new Date())
+    : 0;
+
+  const netProfitToday = todayData
+    ? todayData.totalProfit - dailyExpenses
+    : -dailyExpenses;
+
   const handleDayPress = (day) => {
-    const dateStr = day.dateString;
-    setSelectedDate(dateStr);
-    navigation.navigate('SalesDay', { date: dateStr });
+    navigation.navigate('SalesDay', { date: day.dateString });
   };
 
   const handleTodayPress = () => {
-    const today = new Date();
-    setCurrentMonth(today);
-    setSelectedDate(today.toISOString().split('T')[0]);
-  };
-
-  const handleAddSale = () => {
-    const dateStr = selectedDate || new Date().toISOString().split('T')[0];
-    navigation.navigate('AddSales', { date: dateStr });
+    setCurrentMonth(new Date());
   };
 
   const handleAnalytics = () => {
@@ -91,6 +148,8 @@ const SalesCalendarScreen = ({ navigation }) => {
         onDayPress={handleDayPress}
         onMonthChange={(month) => setCurrentMonth(new Date(month.dateString))}
         markedDates={markedDates}
+        monthNames={getMonthNames()}
+        firstDay={1}
         theme={{
           backgroundColor: COLORS.background,
           calendarBackground: COLORS.surface,
@@ -111,9 +170,46 @@ const SalesCalendarScreen = ({ navigation }) => {
         }}
       />
 
-      <TouchableOpacity style={styles.fab} onPress={handleAddSale}>
-        <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
-      </TouchableOpacity>
+      <View style={styles.todayCard}>
+        {todayData && todayData.totalRevenue > 0 ? (
+          <View style={styles.todayStats}>
+            <View style={styles.todayStat}>
+              <Text style={styles.todayStatLabel}>{t('revenue_today')}</Text>
+              <Text style={styles.todayStatValue}>
+                {todayData.totalRevenue.toFixed(2)} {getCurrencySymbol(user?.currency || 'KZT')}
+              </Text>
+            </View>
+            <View style={styles.todayStatDivider} />
+            <View style={styles.todayStat}>
+              <Text style={styles.todayStatLabel}>{t('daily_expenses')}</Text>
+              <Text style={[styles.todayStatValue, styles.expensesValue]}>
+                {dailyExpenses.toFixed(2)} {getCurrencySymbol(user?.currency || 'KZT')}
+              </Text>
+            </View>
+            <View style={styles.todayStatDivider} />
+            <View style={styles.todayStat}>
+              <Text style={styles.todayStatLabel}>{t('net_profit_today')}</Text>
+              <Text style={[
+                styles.todayStatValue,
+                netProfitToday >= 0 ? styles.profitPositive : styles.profitNegative
+              ]}>
+                {netProfitToday.toFixed(2)} {getCurrencySymbol(user?.currency || 'KZT')}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>{t('no_sales_today')}</Text>
+            <TouchableOpacity
+              style={styles.addFirstSaleButton}
+              onPress={() => navigation.navigate('AddSales', { date: format(new Date(), 'yyyy-MM-dd') })}
+            >
+              <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
+              <Text style={styles.addFirstSaleButtonText}>{t('add_first_sale_today')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -152,21 +248,70 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontWeight: '600',
   },
-  fab: {
-    position: 'absolute',
-    right: THEME.spacing.lg,
-    bottom: THEME.spacing.xl,
-    backgroundColor: COLORS.accent,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  todayCard: {
+    margin: THEME.spacing.md,
+    marginTop: 0,
+    backgroundColor: COLORS.surface,
+    borderRadius: THEME.roundness,
+    padding: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  todayStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  todayStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  todayStatLabel: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginBottom: 2,
+  },
+  todayStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  todayStatDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: COLORS.border,
+    marginHorizontal: THEME.spacing.sm,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: THEME.spacing.md,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: COLORS.textLight,
+    marginBottom: THEME.spacing.md,
+  },
+  profitPositive: {
+    color: COLORS.success,
+  },
+  profitNegative: {
+    color: COLORS.error,
+  },
+  expensesValue: {
+    color: COLORS.warning || '#FF9800',
+  },
+  addFirstSaleButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    gap: THEME.spacing.sm,
+    backgroundColor: COLORS.accent,
+    paddingVertical: THEME.spacing.md,
+    borderRadius: THEME.roundness,
+  },
+  addFirstSaleButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

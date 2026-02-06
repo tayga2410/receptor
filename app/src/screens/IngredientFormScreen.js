@@ -43,8 +43,8 @@ const IngredientFormScreen = ({ route, navigation }) => {
 
   const [formData, setFormData] = useState({
     name: ingredient?.name || '',
-    price: '',
-    quantity: '',
+    price: ingredient?.pricePerUnit?.toString() || '',
+    quantity: '1',
     unitId: ingredient?.unitId || '',
   });
 

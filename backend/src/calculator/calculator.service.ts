@@ -17,13 +17,16 @@ export class CalculatorService {
   }
 
   private convertToBaseUnit(quantity: number, fromUnit: Unit, toUnit: Unit): number {
+    if (!fromUnit || !toUnit) {
+      return quantity;
+    }
     const quantityInBase = quantity * (fromUnit.conversionFactor || 1);
     const quantityInTarget = quantityInBase / (toUnit.conversionFactor || 1);
     return quantityInTarget;
   }
 
-  private getConversionFactor(unit: Unit): number {
-    return unit.conversionFactor || 1;
+  private getConversionFactor(unit: Unit | undefined | null): number {
+    return unit?.conversionFactor || 1;
   }
 
   calculateSalePrice(costPrice: number, marginPercent: number): number {
