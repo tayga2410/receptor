@@ -8,7 +8,10 @@ import { useTranslation } from '../contexts/TranslationContext';
 import RecipesScreen from '../screens/RecipesScreen';
 import RecipeFormScreen from '../screens/RecipeFormScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
-import CalculatorScreen from '../screens/CalculatorScreen';
+import SalesCalendarScreen from '../screens/SalesCalendarScreen';
+import SalesDayScreen from '../screens/SalesDayScreen';
+import AddSalesScreen from '../screens/AddSalesScreen';
+import SalesAnalyticsScreen from '../screens/SalesAnalyticsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
@@ -118,6 +121,51 @@ const IngredientsStack = () => {
   );
 };
 
+const SalesStack = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.surface,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        },
+        headerTitleStyle: {
+          color: COLORS.text,
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        headerRight: () => <LanguageSelector />,
+      }}
+    >
+      <Stack.Screen
+        name="SalesCalendar"
+        component={SalesCalendarScreen}
+        options={{ title: t('sales_calendar') }}
+      />
+      <Stack.Screen
+        name="SalesDay"
+        component={SalesDayScreen}
+        options={{ title: t('daily_sales') }}
+      />
+      <Stack.Screen
+        name="AddSales"
+        component={AddSalesScreen}
+        options={{ title: t('add_sale') }}
+      />
+      <Stack.Screen
+        name="SalesAnalytics"
+        component={SalesAnalyticsScreen}
+        options={{ title: t('analytics') }}
+      />
+    </Stack.Navigator>
+  );
+};
+
 const ProfileStack = () => {
   const { t } = useTranslation();
 
@@ -169,8 +217,8 @@ const MainTabs = () => {
             return <TabIcon iconName="book-open-variant" focused={focused} />;
           } else if (route.name === 'Ingredients') {
             return <TabIcon iconName="food-variant" focused={focused} />;
-          } else if (route.name === 'Calculator') {
-            return <TabIcon iconName="calculator-variant" focused={focused} />;
+          } else if (route.name === 'Sales') {
+            return <TabIcon iconName="chart-bar" focused={focused} />;
           } else if (route.name === 'Profile') {
             return <TabIcon iconName="account" focused={focused} />;
           }
@@ -201,9 +249,9 @@ const MainTabs = () => {
         options={{ title: t('ingredients') }}
       />
       <Tab.Screen
-        name="Calculator"
-        component={CalculatorScreen}
-        options={() => ({ title: t('calculator') })}
+        name="Sales"
+        component={SalesStack}
+        options={{ title: t('sales') }}
       />
       <Tab.Screen
         name="Profile"

@@ -41,6 +41,8 @@ model User {
   ingredients       Ingredient[]
   recipes           Recipe[]
   units             Unit[]
+  expenses          Expense[]
+  salesRecords      SalesRecord[]
 }
 
 model Unit {
@@ -100,7 +102,45 @@ model RecipeIngredient {
   ingredientId      String      @db.Uuid
   quantity          Float
   unitId            String      @db.Uuid
-  recipe            Recipe      @relation(fields: [recipeId], references: [id])
-  ingredient        Ingredient  @relation(fields: [ingredientId], references: [id])
+  recipe            Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient        Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   unit              Unit        @relation(fields: [unitId], references: [id])
+}
+
+model SalesRecord {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @db.Uuid
+  date      DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     SalesItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, date])
+}
+
+model SalesItem {
+  id                String      @id @default(uuid()) @db.Uuid
+  salesRecordId     String      @db.Uuid
+  recipeId          String      @db.Uuid
+  quantity          Float
+  snapshotSalePrice Float
+  snapshotCostPrice Float
+  currency          Currency
+  recipeName        String?
+  salesRecord       SalesRecord @relation(fields: [salesRecordId], references: [id], onDelete: Cascade)
+
+  @@index([salesRecordId])
+  @@index([recipeId])
+}
+
+model Expense {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  name      String
+  amount    Float
+  icon      String   @default("package")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

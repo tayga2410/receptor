@@ -14,9 +14,11 @@ import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
+import useStore from '../store/useStore';
 
 const RecipesScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
+  const user = useStore((state) => state.user);
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -103,7 +105,8 @@ const RecipesScreen = ({ navigation }) => {
   const renderRecipe = ({ item }) => {
     const costPrice = calculateCostPrice(item);
     const profit = calculateProfit(item);
-    const currencySymbol = getCurrencySymbol(item.currency);
+    const userCurrency = user?.currency || 'KZT';
+    const currencySymbol = getCurrencySymbol(userCurrency);
 
     return (
       <Pressable

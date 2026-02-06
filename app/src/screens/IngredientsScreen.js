@@ -5,9 +5,12 @@ import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import { formatPricePerUnit } from '../utils/currency';
+import useStore from '../store/useStore';
+import { CURRENCIES } from '../utils/currency';
 
 const IngredientsScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
+  const user = useStore((state) => state.user);
   const [ingredients, setIngredients] = useState([]);
   const [filteredIngredients, setFilteredIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -95,19 +98,22 @@ const IngredientsScreen = ({ navigation }) => {
     navigation.navigate('IngredientForm', { ingredient });
   };
 
-  const renderIngredient = ({ item }) => (
-    <Pressable
-      style={styles.ingredientCard}
-      onPress={() => handleIngredientPress(item)}
-    >
-      <View style={styles.ingredientHeader}>
-        <Text style={styles.ingredientName}>{item.name}</Text>
-        <Text style={styles.ingredientPrice}>
-          {formatPricePerUnit(item.pricePerUnit, item.currency, item.unit, language)}
-        </Text>
-      </View>
-    </Pressable>
-  );
+  const renderIngredient = ({ item }) => {
+    const userCurrency = user?.currency || 'KZT';
+    return (
+      <Pressable
+        style={styles.ingredientCard}
+        onPress={() => handleIngredientPress(item)}
+      >
+        <View style={styles.ingredientHeader}>
+          <Text style={styles.ingredientName}>{item.name}</Text>
+          <Text style={styles.ingredientPrice}>
+            {formatPricePerUnit(item.pricePerUnit, userCurrency, item.unit, language)}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>

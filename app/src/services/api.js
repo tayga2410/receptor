@@ -1,6 +1,9 @@
 import { API_BASE_URL } from '../constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useStore from '../store/useStore';
+import { navigationRef } from '../navigation/navigationRef';
+import { Alert } from 'react-native';
+import { TRANSLATIONS } from '../constants/translations';
 
 const TOKEN_STORAGE_KEY = '@app_token';
 
@@ -114,7 +117,7 @@ export const apiFetch = async (endpoint, options = {}) => {
 
   // Получаем свежий токен из store
   const currentToken = useStore.getState().token || token;
-  
+
   if (currentToken) {
     headers['Authorization'] = `Bearer ${currentToken}`;
     console.log(`apiFetch: ${url} with token (first 10 chars): ${currentToken.substring(0, 10)}...`);
@@ -128,12 +131,63 @@ export const apiFetch = async (endpoint, options = {}) => {
       headers,
     }, options.timeout || 15000);
 
+    // Обработка 401 Unauthorized
+    if (response.status === 401) {
+      const state = useStore.getState();
+
+      // Если у пользователя уже есть токен - значит сессия истекла
+      // Если токена нет (например, при логине) - это просто неверные креды
+      if (state.token || state.isAuthenticated) {
+        console.log('401 Unauthorized - session expired, logging out...');
+
+        const language = state.language || 'RU';
+        const translations = TRANSLATIONS[language] || TRANSLATIONS.RU;
+
+        // Показываем пользователю уведомление
+        Alert.alert(
+          translations.session_expired,
+          translations.session_expired_message,
+          [
+            {
+              text: translations.ok,
+              onPress: () => {
+                state.logout();
+
+                // Перенаправляем на экран логина
+                if (navigationRef.current && navigationRef.current.reset) {
+                  navigationRef.current.reset({
+                    index: 0,
+                    routes: [{ name: 'Auth' }],
+                  });
+                }
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+
+        const authError = new Error('Session expired. Please login again.');
+        authError.name = 'AuthError';
+        authError.status = 401;
+        throw authError;
+      }
+
+      // Если токена нет - просто возвращаем response, вызывающий код обработает
+      console.log('401 Unauthorized - invalid credentials');
+      return response;
+    }
+
     if (!response.ok) {
       console.log(`Response not ok: ${response.status} ${response.statusText}`);
     }
 
     return response;
   } catch (error) {
+    // Если это наша ошибка авторизации, просто пробрасываем дальше
+    if (error.name === 'AuthError') {
+      throw error;
+    }
+
     console.error(`API Error [${endpoint}]:`, {
       name: error.name,
       message: error.message,
@@ -141,14 +195,14 @@ export const apiFetch = async (endpoint, options = {}) => {
       endpoint,
       url
     });
-    
+
     // Добавляем больше контекста к ошибке
     const enhancedError = new Error(error.message || 'Network request failed');
     enhancedError.name = error.name || 'NetworkError';
     enhancedError.originalError = error;
     enhancedError.endpoint = endpoint;
     enhancedError.url = url;
-    
+
     throw enhancedError;
   }
 };
@@ -224,6 +278,50 @@ export const api = {
     calculate: (ingredients) => apiFetch('/calculator/calculate', {
       method: 'POST',
       body: JSON.stringify({ ingredients }),
+    }),
+  },
+  expenses: {
+    getAll: () => apiFetch('/expenses'),
+    create: (data) => apiFetch('/expenses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => apiFetch(`/expenses/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => apiFetch(`/expenses/${id}`, {
+      method: 'DELETE',
+    }),
+  },
+  sales: {
+    getAll: (startDate, endDate) => {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      const query = params.toString() ? `?${params}` : '';
+      return apiFetch(`/sales${query}`);
+    },
+    getCalendar: (year, month) => apiFetch(`/sales/calendar?year=${year}&month=${month}`),
+    getAnalytics: (startDate, endDate) => {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      const query = params.toString() ? `?${params}` : '';
+      return apiFetch(`/sales/analytics${query}`);
+    },
+    getByDate: (date) => apiFetch(`/sales/date/${date}`),
+    getOne: (id) => apiFetch(`/sales/${id}`),
+    create: (data) => apiFetch('/sales', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => apiFetch(`/sales/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => apiFetch(`/sales/${id}`, {
+      method: 'DELETE',
     }),
   },
 };

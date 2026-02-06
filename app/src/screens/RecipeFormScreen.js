@@ -35,7 +35,6 @@ const RecipeFormScreen = ({ route, navigation }) => {
     name: recipe?.name || '',
     description: recipe?.description || '',
     marginPercent: recipe?.marginPercent?.toString() || '100',
-    currency: user?.currency || 'KZT',
     ingredients: recipe?.ingredients?.map(ri => ({
       ingredientId: ri.ingredientId,
       quantity: ri.quantity.toString(),
@@ -75,7 +74,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
       setAvailableIngredients(data);
     } catch (error) {
       console.error('Failed to load ingredients:', error);
-      Alert.alert('Error', 'Failed to load ingredients');
+      Alert.alert(t('error'), t('error_load_ingredients'));
     } finally {
       setIngredientsLoading(false);
     }
@@ -89,11 +88,11 @@ const RecipeFormScreen = ({ route, navigation }) => {
         navigation.goBack();
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.message || 'Failed to delete recipe');
+        Alert.alert(t('error'), error.message || t('error_delete_recipe'));
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
-      Alert.alert('Error', error.message || 'Network error');
+      Alert.alert(t('error'), error.message || t('error_network'));
     } finally {
       setLoading(false);
     }
@@ -102,7 +101,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
   const addIngredient = () => {
     console.log('addIngredient called, availableIngredients:', availableIngredients.length);
     if (availableIngredients.length === 0) {
-      Alert.alert('Error', t('no_ingredients'));
+      Alert.alert(t('error'), t('no_ingredients'));
       return;
     }
     setSelectedIngredientIndex(null); // null означает добавление нового
@@ -121,7 +120,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
   const confirmIngredientSelection = (ingredientId = null) => {
     const id = ingredientId || tempSelectedIngredientId;
     if (!id) {
-      Alert.alert('Ошибка', 'Выберите ингредиент из списка');
+      Alert.alert(t('error'), t('error_select_ingredient'));
       return;
     }
 
@@ -196,7 +195,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
 
   const handleSave = async () => {
     if (!formData.name || formData.ingredients.length === 0) {
-      Alert.alert('Error', t('error_fill_required_fields'));
+      Alert.alert(t('error'), t('error_fill_required_fields'));
       return;
     }
 
@@ -219,7 +218,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
         description: formData.description || undefined,
         portions: 1,
         salePrice: salePrice,
-        currency: formData.currency,
+        currency: user?.currency || 'KZT',
         marginPercent: parseFloat(formData.marginPercent) || 0,
         ingredients: payloadIngredients,
       };
@@ -239,11 +238,11 @@ const RecipeFormScreen = ({ route, navigation }) => {
       if (response.ok) {
         navigation.goBack();
       } else {
-        Alert.alert('Error', responseData.message || 'Failed to save recipe');
+        Alert.alert(t('error'), responseData.message || t('error_save_recipe'));
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      Alert.alert('Error', error.message || 'Network error');
+      Alert.alert(t('error'), error.message || t('error_network'));
     } finally {
       setLoading(false);
     }
@@ -252,7 +251,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
   const costPrice = calculateCostPrice();
   const salePrice = calculateSalePrice();
   const profit = calculateProfit();
-  const currencySymbol = getCurrencySymbol(formData.currency);
+  const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
 
   return (
     <KeyboardAvoidingView
@@ -305,15 +304,9 @@ const RecipeFormScreen = ({ route, navigation }) => {
                 {t('no_ingredients')}. {t('add_first_ingredient')}
               </Text>
             ) : formData.ingredients.length === 0 ? (
-              <>
-                <Text style={styles.emptyText}>
-                  Нажмите + чтобы выбрать ингредиент из списка
-                </Text>
-                <TouchableOpacity style={styles.addFirstIngredientButton} onPress={addIngredient}>
-                  <MaterialCommunityIcons name="plus-circle" size={24} color={COLORS.accent} />
-                  <Text style={styles.addFirstIngredientText}>{t('add_ingredient')}</Text>
-                </TouchableOpacity>
-              </>
+              <Text style={styles.emptyText}>
+                Нажмите + чтобы выбрать ингредиент из списка
+              </Text>
             ) : (
               formData.ingredients.map((ri, index) => (
                 <View key={index} style={styles.ingredientCard}>
@@ -567,18 +560,6 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     textAlign: 'center',
     paddingVertical: THEME.spacing.md,
-  },
-  addFirstIngredientButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: THEME.spacing.md,
-    gap: THEME.spacing.sm,
-  },
-  addFirstIngredientText: {
-    fontSize: 14,
-    color: COLORS.accent,
-    fontWeight: '600',
   },
   ingredientCard: {
     backgroundColor: COLORS.background,

@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
 import useStore from '../store/useStore';
+import { navigationRef } from './navigationRef';
 
 const NAVIGATION_STATE_KEY = 'NAVIGATION_STATE';
 
@@ -39,6 +40,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       initialState={initialState}
       onStateChange={(state) => {
         // Сохраняем состояние навигации

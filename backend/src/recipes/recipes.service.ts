@@ -129,6 +129,12 @@ export class RecipesService {
   }
 
   async delete(id: string) {
+    // Сначала удаляем связанные ингредиенты рецепта
+    await this.prisma.recipeIngredient.deleteMany({
+      where: { recipeId: id },
+    });
+
+    // Затем удаляем сам рецепт
     return this.prisma.recipe.delete({
       where: { id },
     });
