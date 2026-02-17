@@ -294,6 +294,20 @@ export const api = {
       method: 'DELETE',
     }),
   },
+  expenseItems: {
+    getAll: () => apiFetch('/expense-items'),
+    create: (data) => apiFetch('/expense-items', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => apiFetch(`/expense-items/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => apiFetch(`/expense-items/${id}`, {
+      method: 'DELETE',
+    }),
+  },
   sales: {
     getAll: (startDate, endDate) => {
       const params = new URLSearchParams();

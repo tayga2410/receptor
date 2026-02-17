@@ -20,14 +20,16 @@ import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import useStore from '../store/useStore';
 import { getCurrencySymbol } from '../utils/currency';
+import { formatUnit } from '../utils/units';
 
 const RecipeFormScreen = ({ route, navigation }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
   const recipe = route.params?.recipe;
   const [loading, setLoading] = useState(false);
   const [ingredientsLoading, setIngredientsLoading] = useState(true);
   const [availableIngredients, setAvailableIngredients] = useState([]);
+  const [allUnits, setAllUnits] = useState([]);
   const [showIngredientPicker, setShowIngredientPicker] = useState(false);
   const [selectedIngredientIndex, setSelectedIngredientIndex] = useState(null); // Для редактирования
   const [tempSelectedIngredientId, setTempSelectedIngredientId] = useState(null); // Временное значение для Picker
@@ -51,6 +53,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     loadIngredients();
+    loadUnits();
   }, []);
 
   useEffect(() => {
@@ -77,12 +80,61 @@ const RecipeFormScreen = ({ route, navigation }) => {
       const response = await api.ingredients.getAll();
       const data = await response.json();
       setAvailableIngredients(data);
+
+      // Синхронизируем единицы в ингредиентах рецепта с единицами ингредиентов
+      // (если тип единицы изменился - например, кг -> л)
+      if (recipe?.ingredients?.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          ingredients: prev.ingredients.map(ri => {
+            const updatedIngredient = data.find(i => i.id === ri.ingredientId);
+            if (updatedIngredient && ri.unit?.type !== updatedIngredient.unit?.type) {
+              // Тип единицы изменился - сбрасываем на единицу ингредиента
+              return {
+                ...ri,
+                ingredient: updatedIngredient,
+                unitId: updatedIngredient.unitId,
+                unit: updatedIngredient.unit,
+              };
+            }
+            // Обновляем данные ингредиента в любом случае
+            if (updatedIngredient) {
+              return { ...ri, ingredient: updatedIngredient };
+            }
+            return ri;
+          }),
+        }));
+      }
     } catch (error) {
       console.error('Failed to load ingredients:', error);
       Alert.alert(t('error'), t('error_load_ingredients'));
     } finally {
       setIngredientsLoading(false);
     }
+  };
+
+  const loadUnits = async () => {
+    try {
+      const response = await api.units.getAll();
+      const data = await response.json();
+      setAllUnits(data);
+    } catch (error) {
+      console.error('Failed to load units:', error);
+    }
+  };
+
+  // Конвертация единиц: quantity в fromUnit -> количество в toUnit
+  const convertUnits = (quantity, fromUnit, toUnit) => {
+    if (!fromUnit || !toUnit) return quantity;
+    const fromFactor = fromUnit.conversionFactor || 1;
+    const toFactor = toUnit.conversionFactor || 1;
+    const inBase = quantity * fromFactor;
+    return inBase / toFactor;
+  };
+
+  // Получить единицы того же типа
+  const getCompatibleUnits = (unitType) => {
+    return allUnits.filter(u => u.type === unitType);
   };
 
   const handleDelete = async () => {
@@ -178,12 +230,40 @@ const RecipeFormScreen = ({ route, navigation }) => {
     setFormData({ ...formData, ingredients: newIngredients });
   };
 
+  const updateIngredientUnit = (index, unitId) => {
+    const newIngredients = [...formData.ingredients];
+    const currentIngredient = newIngredients[index];
+    const newUnit = allUnits.find(u => u.id === unitId);
+    const oldUnit = currentIngredient.unit;
+
+    if (newUnit && oldUnit) {
+      // Конвертируем количество из старой единицы в новую
+      const currentQuantity = parseFloat(currentIngredient.quantity) || 0;
+      const convertedQuantity = convertUnits(currentQuantity, oldUnit, newUnit);
+
+      newIngredients[index].unitId = unitId;
+      newIngredients[index].unit = newUnit;
+      newIngredients[index].quantity = convertedQuantity.toString();
+      setFormData({ ...formData, ingredients: newIngredients });
+    }
+  };
+
   const calculateCostPrice = () => {
     return formData.ingredients.reduce((total, ri) => {
       const ingredientPrice = ri.ingredient?.pricePerUnit || 0;
       const quantity = parseFloat(ri.quantity) || 0;
-      return total + (ingredientPrice * quantity);
+      // Конвертация: количество в единице рецепта -> количество в единице ингредиента
+      const convertedQty = convertUnits(quantity, ri.unit, ri.ingredient?.unit);
+      return total + (ingredientPrice * convertedQty);
     }, 0);
+  };
+
+  // Расчёт стоимости одного ингредиента с конвертацией
+  const calculateIngredientCost = (ri) => {
+    const ingredientPrice = ri.ingredient?.pricePerUnit || 0;
+    const quantity = parseFloat(ri.quantity) || 0;
+    const convertedQty = convertUnits(quantity, ri.unit, ri.ingredient?.unit);
+    return ingredientPrice * convertedQty;
   };
 
   const calculateSalePrice = () => {
@@ -333,7 +413,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
                     >
                       <Text style={styles.ingredientName}>{ri.ingredient?.name}</Text>
                       <Text style={styles.ingredientPrice}>
-                        {ri.ingredient?.pricePerUnit} {currencySymbol}/{ri.unit?.shortName}
+                        {ri.ingredient?.pricePerUnit} {currencySymbol}/{formatUnit(ri.ingredient?.unit?.name, ri.ingredient?.unit?.shortName, language)}
                       </Text>
                     </TouchableOpacity>
 
@@ -353,59 +433,78 @@ const RecipeFormScreen = ({ route, navigation }) => {
                     </View>
                   </View>
 
-                  <View style={styles.quantityRow}>
-                    <Text style={styles.quantityLabel}>Кол-во:</Text>
-                    <View style={styles.quantityControl}>
-                      <TouchableOpacity
-                        style={styles.quantityButton}
-                        onPress={() => {
-                          const currentQty = parseFloat(ri.quantity) || 0;
-                          const newQty = Math.max(0, currentQty - 0.5).toString();
-                          updateIngredientQuantity(index, newQty);
-                        }}
-                      >
-                        <MaterialCommunityIcons name="minus" size={16} color={COLORS.text} />
-                      </TouchableOpacity>
-                      <TextInput
-                        style={styles.quantityInput}
-                        value={ri.quantity}
-                        onChangeText={(value) => updateIngredientQuantity(index, value)}
-                        keyboardType="decimal-pad"
-                        onFocus={() => {
-                          const cardRef = ingredientCardRefs.current[index];
-                          if (cardRef && cardRef.measureInWindow && scrollViewRef.current) {
-                            cardRef.measureInWindow((_x, y, _width, _height) => {
-                              // Желаемая позиция элемента - выше середины экрана (1/3 высоты)
-                              const targetY = screenHeight / 3;
-                              // Текущая позиция элемента на экране: y
-                              // Нужно проскроллить на разницу между текущей и желаемой позицией
-                              const scrollOffset = y - targetY;
-                              const newScrollY = scrollYRef.current + scrollOffset;
+                  <View style={styles.quantitySection}>
+                    <View style={styles.quantityRow}>
+                      <Text style={styles.quantityLabel}>{t('qty_short')}</Text>
+                      <View style={styles.quantityControl}>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => {
+                            const currentQty = parseFloat(ri.quantity) || 0;
+                            const newQty = Math.max(0, currentQty - 0.5).toString();
+                            updateIngredientQuantity(index, newQty);
+                          }}
+                        >
+                          <MaterialCommunityIcons name="minus" size={16} color={COLORS.text} />
+                        </TouchableOpacity>
+                        <TextInput
+                          style={styles.quantityInput}
+                          value={ri.quantity}
+                          onChangeText={(value) => updateIngredientQuantity(index, value)}
+                          keyboardType="decimal-pad"
+                          onFocus={() => {
+                            const cardRef = ingredientCardRefs.current[index];
+                            if (cardRef && cardRef.measureInWindow && scrollViewRef.current) {
+                              cardRef.measureInWindow((_x, y, _width, _height) => {
+                                const targetY = screenHeight / 3;
+                                const scrollOffset = y - targetY;
+                                const newScrollY = scrollYRef.current + scrollOffset;
 
-                              if (scrollOffset > 0) {
-                                scrollViewRef.current.scrollTo({
-                                  y: newScrollY,
-                                  animated: true,
-                                });
-                              }
-                            });
-                          }
-                        }}
-                      />
-                      <TouchableOpacity
-                        style={styles.quantityButton}
-                        onPress={() => {
-                          const currentQty = parseFloat(ri.quantity) || 0;
-                          const newQty = (currentQty + 0.5).toString();
-                          updateIngredientQuantity(index, newQty);
-                        }}
-                      >
-                        <MaterialCommunityIcons name="plus" size={16} color={COLORS.text} />
-                      </TouchableOpacity>
+                                if (scrollOffset > 0) {
+                                  scrollViewRef.current.scrollTo({
+                                    y: newScrollY,
+                                    animated: true,
+                                  });
+                                }
+                              });
+                            }
+                          }}
+                        />
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => {
+                            const currentQty = parseFloat(ri.quantity) || 0;
+                            const newQty = (currentQty + 0.5).toString();
+                            updateIngredientQuantity(index, newQty);
+                          }}
+                        >
+                          <MaterialCommunityIcons name="plus" size={16} color={COLORS.text} />
+                        </TouchableOpacity>
+                      </View>
+                      {/* Кубики единиц на той же строке */}
+                      <View style={styles.unitSelectorRow}>
+                        {getCompatibleUnits(ri.ingredient?.unit?.type).map(unit => (
+                          <TouchableOpacity
+                            key={unit.id}
+                            style={[
+                              styles.unitChip,
+                              ri.unitId === unit.id && styles.unitChipSelected,
+                            ]}
+                            onPress={() => updateIngredientUnit(index, unit.id)}
+                          >
+                            <Text style={[
+                              styles.unitChipText,
+                              ri.unitId === unit.id && styles.unitChipTextSelected,
+                            ]}>
+                              {formatUnit(unit.name, unit.shortName, language)}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     </View>
-                    <Text style={styles.unitLabel}>{ri.unit?.shortName}</Text>
+                    {/* Формула расчёта */}
                     <Text style={styles.costLabel}>
-                      = {((ri.ingredient?.pricePerUnit || 0) * (parseFloat(ri.quantity) || 0)).toFixed(2)} {currencySymbol}
+                      {ri.quantity} {formatUnit(ri.unit?.name, ri.unit?.shortName, language)} × {ri.ingredient?.pricePerUnit} {currencySymbol}/{formatUnit(ri.ingredient?.unit?.name, ri.ingredient?.unit?.shortName, language)} = {calculateIngredientCost(ri).toFixed(2)} {currencySymbol}
                     </Text>
                   </View>
                 </View>
@@ -442,7 +541,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
                     >
                       <Text style={styles.ingredientListItemName}>{item.name}</Text>
                       <Text style={styles.ingredientListItemPrice}>
-                        {item.pricePerUnit} {currencySymbol}/{item.unit?.shortName}
+                        {item.pricePerUnit} {currencySymbol}/{formatUnit(item.unit?.name, item.unit?.shortName, language)}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -639,6 +738,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: THEME.spacing.sm,
   },
+  quantitySection: {
+    gap: THEME.spacing.xs,
+  },
   quantityLabel: {
     fontSize: 13,
     color: COLORS.textLight,
@@ -668,11 +770,35 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
+  unitSelectorRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  unitChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: THEME.roundness,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  unitChipSelected: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  unitChipText: {
+    fontSize: 12,
+    color: COLORS.text,
+  },
+  unitChipTextSelected: {
+    color: COLORS.white,
+    fontWeight: '600',
+  },
   costLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.accent,
-    marginLeft: 'auto',
+    marginTop: THEME.spacing.xs,
   },
   summarySection: {
     backgroundColor: COLORS.surface,

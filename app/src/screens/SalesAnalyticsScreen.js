@@ -130,13 +130,8 @@ const SalesAnalyticsScreen = () => {
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>{t('total_profit')}</Text>
-            <Text style={[
-              styles.summaryValue,
-              (analytics?.profit || 0) >= 0 ? styles.profitPositive : styles.profitNegative
-            ]}>
-              {analytics?.profit?.toFixed(2) || '0.00'}
-            </Text>
+            <Text style={styles.summaryLabel}>{t('expense_items')}</Text>
+            <Text style={[styles.summaryValue, styles.expensesValue]}>{analytics?.expenses?.saleItems?.toFixed(2) || '0.00'}</Text>
           </View>
         </View>
         <View style={[styles.summaryDividerLine, styles.netProfitDivider]} />

@@ -17,20 +17,8 @@ import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import useStore from '../store/useStore';
-import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
-
-// Функция для сокращения названий единиц измерения
-const shortenUnitName = (name, shortName) => {
-  if (shortName) return shortName;
-
-  const n = name.toLowerCase();
-  if (n.includes('грамм') || n === 'г') return 'г';
-  if (n.includes('килограмм') || n === 'кг') return 'кг';
-  if (n.includes('штука') || n === 'шт') return 'шт';
-  if (n.includes('литр') || n === 'л') return 'л';
-  if (n.includes('миллилитр') || n === 'мл') return 'мл';
-  return name.substring(0, 3);
-};
+import { CURRENCIES } from '../utils/currency';
+import { formatUnit } from '../utils/units';
 
 const IngredientFormScreen = ({ route, navigation }) => {
   const { t, language } = useTranslation();
@@ -150,24 +138,10 @@ const IngredientFormScreen = ({ route, navigation }) => {
     }
   };
 
-  // Показываем пример расчёта
-  const getPricePerUnitDisplay = () => {
-    const price = parseFloat(formData.price) || 0;
-    const quantity = parseFloat(formData.quantity) || 1;
-    if (price > 0) {
-      const pricePerUnit = price / quantity;
-      const unit = units.find(u => u.id === formData.unitId);
-      const unitName = unit ? shortenUnitName(unit.name, unit.shortName) : '';
-      const userCurrency = user?.currency || 'KZT';
-      return `${pricePerUnit.toFixed(2)} ${CURRENCIES[userCurrency]?.symbol || userCurrency} / 1 ${unitName}`;
-    }
-    return '-';
-  };
-
   // Получаем отображаемое название выбранной единицы
   const getSelectedUnitName = () => {
     const unit = units.find(u => u.id === formData.unitId);
-    return unit ? shortenUnitName(unit.name, unit.shortName) : '';
+    return unit ? formatUnit(unit.name, unit.shortName, language) : '';
   };
 
   return (
@@ -224,10 +198,6 @@ const IngredientFormScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          <View style={styles.hintBox}>
-            <Text style={styles.hintText}>{t('calculated_price')}: {getPricePerUnitDisplay()}</Text>
-          </View>
-
           <TouchableOpacity
             style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSave}
@@ -271,7 +241,7 @@ const IngredientFormScreen = ({ route, navigation }) => {
                   }}
                 >
                   <Text style={[styles.optionText, formData.unitId === unit.id && styles.selectedText]}>
-                    {shortenUnitName(unit.name, unit.shortName)}
+                    {formatUnit(unit.name, unit.shortName, language)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -378,24 +348,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
+    paddingHorizontal: THEME.spacing.sm,
   },
   unitButtonText: {
     fontSize: 14,
     color: COLORS.text,
     fontWeight: '500',
-  },
-  hintBox: {
-    backgroundColor: COLORS.accent + '20',
-    borderRadius: THEME.roundness,
-    padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.lg,
-    borderWidth: 1,
-    borderColor: COLORS.accent,
-  },
-  hintText: {
-    fontSize: 14,
-    color: COLORS.text,
-    textAlign: 'center',
   },
   saveButton: {
     backgroundColor: COLORS.accent,

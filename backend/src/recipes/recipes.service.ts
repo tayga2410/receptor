@@ -143,17 +143,17 @@ export class RecipesService {
   private calculateRecipeCost(recipe: any) {
     const costPrice = this.calculator.calculateCostPrice(recipe.ingredients);
     const marginPercent = recipe.marginPercent || 0;
-    const calculatedSalePrice = costPrice * (1 + marginPercent / 100);
-    const actualSalePrice = recipe.salePrice;
-    const actualMarginPercent = costPrice > 0 ? ((actualSalePrice - costPrice) / costPrice) * 100 : 0;
-    const profit = actualSalePrice - costPrice;
+    // salePrice вычисляется динамически на основе текущей себестоимости и маржи
+    const salePrice = costPrice * (1 + marginPercent / 100);
+    const profit = salePrice - costPrice;
     const costPerPortion = costPrice / recipe.portions;
-    const salePricePerPortion = actualSalePrice / recipe.portions;
+    const salePricePerPortion = salePrice / recipe.portions;
 
     return {
       ...recipe,
       costPrice,
-      marginPercent: actualMarginPercent,
+      marginPercent, // возвращаем оригинальную маржу
+      salePrice, // возвращаем вычисленную цену продажи
       profit,
       costPerPortion,
       salePricePerPortion,

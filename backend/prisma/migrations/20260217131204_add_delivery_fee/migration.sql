@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "SalesRecord" ADD COLUMN     "deliveryFee" DOUBLE PRECISION NOT NULL DEFAULT 0;

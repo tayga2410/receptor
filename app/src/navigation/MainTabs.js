@@ -251,7 +251,7 @@ const MainTabs = () => {
           } else if (route.name === 'Sales') {
             return <TabIcon iconName="chart-bar" focused={focused} />;
           } else if (route.name === 'Expenses') {
-            return <TabIcon iconName="receipt" focused={focused} />;
+            return <TabIcon iconName="cash-minus" focused={focused} />;
           } else if (route.name === 'Profile') {
             return <TabIcon iconName="account" focused={focused} />;
           }

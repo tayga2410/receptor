@@ -19,6 +19,7 @@ enum UnitType {
   WEIGHT
   VOLUME
   PIECE
+  LENGTH
   CUSTOM
 }
 
@@ -42,6 +43,7 @@ model User {
   recipes           Recipe[]
   units             Unit[]
   expenses          Expense[]
+  expenseItems      ExpenseItem[]
   salesRecords      SalesRecord[]
 }
 
@@ -62,6 +64,7 @@ model Unit {
 
   ingredients       Ingredient[]
   recipeIngredients RecipeIngredient[]
+  expenseItems      ExpenseItem[]
 }
 
 model Ingredient {
@@ -108,13 +111,15 @@ model RecipeIngredient {
 }
 
 model SalesRecord {
-  id        String      @id @default(uuid()) @db.Uuid
-  userId    String      @db.Uuid
-  date      DateTime    @default(now())
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     SalesItem[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @db.Uuid
+  date         DateTime         @default(now())
+  deliveryFee  Float            @default(0)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        SalesItem[]
+  expenseItems SaleExpenseItem[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([userId, date])
 }
@@ -143,4 +148,37 @@ model Expense {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ExpenseItem {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @db.Uuid
+  name         String
+  description  String?
+  pricePerUnit Float
+  unitId       String           @db.Uuid
+  currency     Currency
+  icon         String           @default("package")
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit         Unit             @relation(fields: [unitId], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  saleExpenseItems SaleExpenseItem[]
+
+  @@index([userId])
+}
+
+model SaleExpenseItem {
+  id             String      @id @default(uuid()) @db.Uuid
+  salesRecordId  String      @db.Uuid
+  expenseItemId  String      @db.Uuid
+  quantity       Float
+  snapshotPrice  Float
+  currency       Currency
+  salesRecord    SalesRecord @relation(fields: [salesRecordId], references: [id], onDelete: Cascade)
+  expenseItem    ExpenseItem @relation(fields: [expenseItemId], references: [id], onDelete: Cascade)
+
+  @@index([salesRecordId])
+  @@index([expenseItemId])
 }

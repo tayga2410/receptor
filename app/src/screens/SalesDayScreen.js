@@ -16,6 +16,7 @@ import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import { getCurrencySymbol } from '../utils/currency';
+import { formatUnit } from '../utils/units';
 
 const getDateLocale = (language) => {
   switch (language) {
@@ -44,7 +45,9 @@ const SalesDayScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       const response = await api.sales.getByDate(date);
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Sales data received:', JSON.stringify(data, null, 2));
       setSalesData(data);
     } catch (error) {
       console.error('Failed to load sales:', error);
@@ -263,12 +266,47 @@ const SalesDayScreen = ({ route, navigation }) => {
               <Text style={styles.netProfitLabel}>{t('net_profit')}</Text>
               <Text style={[
                 styles.netProfitValue,
-                (salesData.totalProfit - dailyExpenses) >= 0 ? styles.profitPositive : styles.profitNegative
+                (salesData.totalProfit - dailyExpenses - (salesData.totalExpenseItems || 0) - (salesData.totalDeliveryFee || 0)) >= 0 ? styles.profitPositive : styles.profitNegative
               ]}>
-                {(salesData.totalProfit - dailyExpenses).toFixed(2)}
+                {(salesData.totalProfit - dailyExpenses - (salesData.totalExpenseItems || 0) - (salesData.totalDeliveryFee || 0)).toFixed(2)}
               </Text>
             </View>
           </View>
+
+          {/* Expense Items Section */}
+          {salesData.expenseItems && salesData.expenseItems.length > 0 && (
+            <View style={styles.expenseItemsSection}>
+              <View style={styles.expenseItemsHeader}>
+                <MaterialCommunityIcons name="package-variant" size={18} color={COLORS.error} />
+                <Text style={styles.expenseItemsTitle}>{t('expense_items')}</Text>
+                <Text style={styles.expenseItemsTotal}>
+                  {(salesData.totalExpenseItems || 0).toFixed(2)}
+                </Text>
+              </View>
+              {salesData.expenseItems.map((item, index) => (
+                <View key={index} style={styles.expenseItemRow}>
+                  <Text style={styles.expenseItemName}>{item.expenseItem?.name || t('expense_item_name')}</Text>
+                  <Text style={styles.expenseItemQty}>{item.quantity} {formatUnit(item.expenseItem?.unit?.name, item.expenseItem?.unit?.shortName, language)}</Text>
+                  <Text style={styles.expenseItemPrice}>
+                    {(item.snapshotPrice * item.quantity).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Delivery Section */}
+          {(salesData.totalDeliveryFee > 0) && (
+            <View style={styles.deliverySection}>
+              <View style={styles.deliveryHeader}>
+                <MaterialCommunityIcons name="truck-delivery" size={18} color={COLORS.textLight} />
+                <Text style={styles.deliveryTitle}>{t('delivery')}</Text>
+                <Text style={styles.deliveryTotal}>
+                  {(salesData.totalDeliveryFee || 0).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          )}
 
           <FlatList
             data={salesData.items}
@@ -400,6 +438,80 @@ const styles = StyleSheet.create({
   },
   expensesValue: {
     color: COLORS.warning || '#FF9800',
+  },
+  expenseItemsSection: {
+    margin: THEME.spacing.md,
+    marginTop: 0,
+    backgroundColor: COLORS.surface,
+    borderRadius: THEME.roundness,
+    padding: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  expenseItemsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.sm,
+    marginBottom: THEME.spacing.sm,
+    paddingBottom: THEME.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  expenseItemsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  expenseItemsTotal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.error,
+  },
+  expenseItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: THEME.spacing.xs,
+  },
+  expenseItemName: {
+    fontSize: 13,
+    color: COLORS.text,
+    flex: 1,
+  },
+  expenseItemQty: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginRight: THEME.spacing.md,
+  },
+  expenseItemPrice: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.error,
+  },
+  deliverySection: {
+    margin: THEME.spacing.md,
+    marginTop: 0,
+    backgroundColor: COLORS.surface,
+    borderRadius: THEME.roundness,
+    padding: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  deliveryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.sm,
+  },
+  deliveryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  deliveryTotal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textLight,
   },
   listContent: {
     padding: THEME.spacing.md,

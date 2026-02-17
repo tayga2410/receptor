@@ -9,6 +9,7 @@ import { IngredientsModule } from './ingredients/ingredients.module';
 import { RecipesModule } from './recipes/recipes.module';
 import { CalculatorModule } from './calculator/calculator.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { ExpenseItemsModule } from './expense-items/expense-items.module';
 import { SalesModule } from './sales/sales.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { SalesModule } from './sales/sales.module';
     RecipesModule,
     CalculatorModule,
     ExpensesModule,
+    ExpenseItemsModule,
     SalesModule,
   ],
 })

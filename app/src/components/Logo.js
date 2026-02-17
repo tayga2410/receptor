@@ -1,22 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../theme/colors';
+import { View, Image, StyleSheet } from 'react-native';
 
 const Logo = ({ size = 'medium' }) => {
   const sizes = {
-    small: { width: 60, height: 60, fontSize: 20 },
-    medium: { width: 120, height: 120, fontSize: 36 },
-    large: { width: 200, height: 200, fontSize: 48 },
+    small: 60,
+    medium: 120,
+    large: 200,
   };
 
-  const { width, height, fontSize } = sizes[size];
+  const dimension = sizes[size];
 
   return (
-    <View style={[styles.container, { width, height }]}>
-      <View style={[styles.logoCircle, { width: width * 0.8, height: height * 0.8 }]}>
-        <Text style={[styles.logoText, { fontSize }]}>🍳</Text>
-        <Text style={[styles.logoSubtext, { fontSize: fontSize * 0.3 }]}>🧮</Text>
-      </View>
+    <View style={[styles.container, { width: dimension, height: dimension }]}>
+      <Image
+        source={require('../../assets/main_icon.png')}
+        style={[styles.logo, { width: dimension, height: dimension }]}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -26,25 +26,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoCircle: {
-    backgroundColor: COLORS.primary,
+  logo: {
     borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logoText: {
-    fontWeight: 'bold',
-  },
-  logoSubtext: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    fontWeight: 'bold',
   },
 });
 

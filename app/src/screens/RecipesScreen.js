@@ -89,21 +89,41 @@ const RecipesScreen = ({ navigation }) => {
     );
   };
 
+  // Конвертация единиц: quantity в fromUnit -> количество в toUnit
+  const convertUnits = (quantity, fromUnit, toUnit) => {
+    if (!fromUnit || !toUnit) return quantity;
+    const fromFactor = fromUnit.conversionFactor || 1;
+    const toFactor = toUnit.conversionFactor || 1;
+    const inBase = quantity * fromFactor;
+    return inBase / toFactor;
+  };
+
   const calculateCostPrice = (recipe) => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return 0;
     return recipe.ingredients.reduce((total, ri) => {
-      const ingredientCost = (ri.ingredient?.pricePerUnit || 0) * ri.quantity;
-      return total + ingredientCost;
+      const ingredientPrice = ri.ingredient?.pricePerUnit || 0;
+      const quantity = parseFloat(ri.quantity) || 0;
+      // Конвертация: количество в единице рецепта -> количество в единице ингредиента
+      const convertedQty = convertUnits(quantity, ri.unit, ri.ingredient?.unit);
+      return total + (ingredientPrice * convertedQty);
     }, 0);
+  };
+
+  const calculateSalePrice = (recipe) => {
+    const costPrice = calculateCostPrice(recipe);
+    const marginPercent = recipe.marginPercent || 0;
+    return costPrice * (1 + marginPercent / 100);
   };
 
   const calculateProfit = (recipe) => {
     const costPrice = calculateCostPrice(recipe);
-    return recipe.salePrice - costPrice;
+    const salePrice = calculateSalePrice(recipe);
+    return salePrice - costPrice;
   };
 
   const renderRecipe = ({ item }) => {
     const costPrice = calculateCostPrice(item);
+    const salePrice = calculateSalePrice(item);
     const profit = calculateProfit(item);
     const userCurrency = user?.currency || 'KZT';
     const currencySymbol = getCurrencySymbol(userCurrency);
@@ -130,7 +150,7 @@ const RecipesScreen = ({ navigation }) => {
           </View>
           <View style={styles.stat}>
             <Text style={styles.statLabel}>{t('sale_price')}:</Text>
-            <Text style={styles.statValue}>{item.salePrice.toFixed(2)} {currencySymbol}</Text>
+            <Text style={styles.statValue}>{salePrice.toFixed(2)} {currencySymbol}</Text>
           </View>
           <View style={styles.stat}>
             <Text style={styles.statLabel}>{t('profit')}:</Text>
