@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -75,10 +75,57 @@ const SalesDayScreen = ({ route, navigation }) => {
     ? expenses.reduce((sum, exp) => sum + exp.amount, 0) / getDaysInMonth(date)
     : 0;
 
-  const handleDeleteSale = async (saleId) => {
+  const formatDate = (dateString) => {
+    const dateObj = new Date(dateString);
+    return format(dateObj, 'd MMMM yyyy', { locale: getDateLocale(language) });
+  };
+
+  const handleAddPortion = async (salesRecordId, itemId) => {
+    try {
+      await api.sales.addPortion(salesRecordId, itemId, 1);
+      loadSalesForDay();
+    } catch (error) {
+      Alert.alert(t('error'), t('error_delete_sale'));
+    }
+  };
+
+  const handleRemovePortion = async (salesRecordId, itemId, currentQuantity) => {
+    if (currentQuantity <= 1) {
+      // If only 1 portion left, confirm complete removal
+      Alert.alert(
+        t('delete'),
+        t('confirm_delete_recipe'),
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('delete'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.sales.removeItem(salesRecordId, itemId);
+                loadSalesForDay();
+              } catch (error) {
+                Alert.alert(t('error'), t('error_delete_sale'));
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      await api.sales.removePortion(salesRecordId, itemId, 1);
+      loadSalesForDay();
+    } catch (error) {
+      Alert.alert(t('error'), t('error_delete_sale'));
+    }
+  };
+
+  const handleRemoveItem = async (salesRecordId, itemId) => {
     Alert.alert(
       t('delete'),
-      t('confirm_delete_sale'),
+      t('confirm_delete_recipe'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -86,7 +133,7 @@ const SalesDayScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.sales.delete(saleId);
+              await api.sales.removeItem(salesRecordId, itemId);
               loadSalesForDay();
             } catch (error) {
               Alert.alert(t('error'), t('error_delete_sale'));
@@ -95,11 +142,6 @@ const SalesDayScreen = ({ route, navigation }) => {
         },
       ]
     );
-  };
-
-  const formatDate = (dateString) => {
-    const dateObj = new Date(dateString);
-    return format(dateObj, 'd MMMM yyyy', { locale: getDateLocale(language) });
   };
 
   const renderSaleItem = ({ item }) => {
@@ -111,7 +153,21 @@ const SalesDayScreen = ({ route, navigation }) => {
       <View style={styles.saleCard}>
         <View style={styles.saleHeader}>
           <Text style={styles.recipeName}>{item.recipeName || t('unnamed_recipe')}</Text>
-          <Text style={styles.quantity}>{t('sold')}: {item.quantity} {t('pcs')}</Text>
+          <View style={styles.quantityControls}>
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => handleRemovePortion(item.salesRecordId, item.id, item.quantity)}
+            >
+              <MaterialCommunityIcons name="minus" size={18} color={COLORS.error} />
+            </TouchableOpacity>
+            <Text style={styles.quantity}>{item.quantity}</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => handleAddPortion(item.salesRecordId, item.id)}
+            >
+              <MaterialCommunityIcons name="plus" size={18} color={COLORS.success} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.saleDetails}>
@@ -143,6 +199,14 @@ const SalesDayScreen = ({ route, navigation }) => {
             </Text>
           </View>
         </View>
+
+        <TouchableOpacity
+          style={styles.deleteItemButton}
+          onPress={() => handleRemoveItem(item.salesRecordId, item.id)}
+        >
+          <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLORS.error} />
+          <Text style={styles.deleteItemText}>{t('delete_recipe')}</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -367,6 +431,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textLight,
   },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.sm,
+  },
+  removeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.error + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.success + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   saleDetails: {
     gap: THEME.spacing.xs,
   },
@@ -398,6 +483,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.accent,
+  },
+  deleteItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: THEME.spacing.xs,
+    marginTop: THEME.spacing.sm,
+    paddingTop: THEME.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  deleteItemText: {
+    fontSize: 13,
+    color: COLORS.error,
   },
   emptyState: {
     flex: 1,

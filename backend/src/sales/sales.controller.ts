@@ -75,4 +75,33 @@ export class SalesController {
   delete(@Param('id') id: string, @CurrentUser() user: any) {
     return this.salesService.delete(id, user.id);
   }
+
+  @Patch(':recordId/items/:itemId/remove-portion')
+  removePortion(
+    @Param('recordId') recordId: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser() user: any,
+    @Body('quantity') quantity?: number,
+  ) {
+    return this.salesService.removePortion(recordId, itemId, user.id, quantity);
+  }
+
+  @Delete(':recordId/items/:itemId')
+  removeItem(
+    @Param('recordId') recordId: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.salesService.removeItem(recordId, itemId, user.id);
+  }
+
+  @Patch(':recordId/items/:itemId/add-portion')
+  addPortion(
+    @Param('recordId') recordId: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser() user: any,
+    @Body('quantity') quantity?: number,
+  ) {
+    return this.salesService.addPortion(recordId, itemId, user.id, quantity);
+  }
 }

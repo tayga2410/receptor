@@ -159,6 +159,76 @@ export class SalesService {
     });
   }
 
+  async removePortion(salesRecordId: string, salesItemId: string, userId: string, quantityToRemove: number = 1) {
+    const record = await this.findOne(salesRecordId, userId);
+    const item = record.items.find(i => i.id === salesItemId);
+
+    if (!item) {
+      throw new NotFoundException('Sales item not found');
+    }
+
+    if (quantityToRemove <= 0) {
+      throw new BadRequestException('Quantity to remove must be positive');
+    }
+
+    if (quantityToRemove >= item.quantity) {
+      // Remove the entire item if quantity becomes 0 or less
+      await this.prisma.salesItem.delete({
+        where: { id: salesItemId },
+      });
+    } else {
+      // Decrease the quantity
+      await this.prisma.salesItem.update({
+        where: { id: salesItemId },
+        data: {
+          quantity: item.quantity - quantityToRemove,
+        },
+      });
+    }
+
+    // Return updated record
+    return this.findOne(salesRecordId, userId);
+  }
+
+  async removeItem(salesRecordId: string, salesItemId: string, userId: string) {
+    const record = await this.findOne(salesRecordId, userId);
+    const item = record.items.find(i => i.id === salesItemId);
+
+    if (!item) {
+      throw new NotFoundException('Sales item not found');
+    }
+
+    await this.prisma.salesItem.delete({
+      where: { id: salesItemId },
+    });
+
+    // Return updated record
+    return this.findOne(salesRecordId, userId);
+  }
+
+  async addPortion(salesRecordId: string, salesItemId: string, userId: string, quantityToAdd: number = 1) {
+    const record = await this.findOne(salesRecordId, userId);
+    const item = record.items.find(i => i.id === salesItemId);
+
+    if (!item) {
+      throw new NotFoundException('Sales item not found');
+    }
+
+    if (quantityToAdd <= 0) {
+      throw new BadRequestException('Quantity to add must be positive');
+    }
+
+    await this.prisma.salesItem.update({
+      where: { id: salesItemId },
+      data: {
+        quantity: item.quantity + quantityToAdd,
+      },
+    });
+
+    // Return updated record
+    return this.findOne(salesRecordId, userId);
+  }
+
   async getAnalytics(userId: string, startDate?: Date, endDate?: Date) {
     const records = await this.findAll(userId, startDate, endDate);
 
@@ -293,7 +363,13 @@ export class SalesService {
       };
     }
 
-    const allItems = records.flatMap(r => r.items);
+    // Add salesRecordId to each item for deletion functionality
+    const allItems = records.flatMap(r =>
+      r.items.map(item => ({
+        ...item,
+        salesRecordId: r.id,
+      }))
+    );
     const totalRevenue = allItems.reduce((sum, item) => sum + item.snapshotSalePrice * item.quantity, 0);
     const totalCost = allItems.reduce((sum, item) => sum + item.snapshotCostPrice * item.quantity, 0);
     const totalProfit = totalRevenue - totalCost;

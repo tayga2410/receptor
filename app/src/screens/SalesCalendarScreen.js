@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -19,12 +19,18 @@ const SalesCalendarScreen = ({ navigation }) => {
   const [todayData, setTodayData] = useState(null);
   const [expenses, setExpenses] = useState([]);
 
+  // Reload when month changes
+  useEffect(() => {
+    loadCalendarData();
+  }, [currentMonth]);
+
+  // Reload when screen gets focus (to update after deletions)
   useFocusEffect(
     useCallback(() => {
       loadCalendarData();
       loadTodayData();
       loadExpenses();
-    }, [currentMonth])
+    }, [])
   );
 
   const loadCalendarData = async () => {
@@ -170,8 +176,8 @@ const SalesCalendarScreen = ({ navigation }) => {
         }}
       />
 
-      <View style={styles.todayCard}>
-        {todayData && todayData.totalRevenue > 0 ? (
+      {todayData && todayData.totalRevenue > 0 && (
+        <View style={styles.todayCard}>
           <View style={styles.todayStats}>
             <View style={styles.todayStat}>
               <Text style={styles.todayStatLabel}>{t('revenue_today')}</Text>
@@ -197,19 +203,8 @@ const SalesCalendarScreen = ({ navigation }) => {
               </Text>
             </View>
           </View>
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>{t('no_sales_today')}</Text>
-            <TouchableOpacity
-              style={styles.addFirstSaleButton}
-              onPress={() => navigation.navigate('AddSales', { date: format(new Date(), 'yyyy-MM-dd') })}
-            >
-              <MaterialCommunityIcons name="plus" size={20} color={COLORS.white} />
-              <Text style={styles.addFirstSaleButtonText}>{t('add_first_sale_today')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -281,15 +276,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginHorizontal: THEME.spacing.sm,
   },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: THEME.spacing.md,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: COLORS.textLight,
-    marginBottom: THEME.spacing.md,
-  },
   profitPositive: {
     color: COLORS.success,
   },
@@ -298,20 +284,6 @@ const styles = StyleSheet.create({
   },
   expensesValue: {
     color: COLORS.warning || '#FF9800',
-  },
-  addFirstSaleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: THEME.spacing.sm,
-    backgroundColor: COLORS.accent,
-    paddingVertical: THEME.spacing.md,
-    borderRadius: THEME.roundness,
-  },
-  addFirstSaleButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

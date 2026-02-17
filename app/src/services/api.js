@@ -323,5 +323,16 @@ export const api = {
     delete: (id) => apiFetch(`/sales/${id}`, {
       method: 'DELETE',
     }),
+    removePortion: (recordId, itemId, quantity = 1) => apiFetch(`/sales/${recordId}/items/${itemId}/remove-portion`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quantity }),
+    }),
+    addPortion: (recordId, itemId, quantity = 1) => apiFetch(`/sales/${recordId}/items/${itemId}/add-portion`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quantity }),
+    }),
+    removeItem: (recordId, itemId) => apiFetch(`/sales/${recordId}/items/${itemId}`, {
+      method: 'DELETE',
+    }),
   },
 };
