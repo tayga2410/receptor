@@ -13,6 +13,11 @@ export class UsersController {
     return this.usersService.getProfile(user.id);
   }
 
+  @Get('me/usage')
+  getUsageStats(@CurrentUser() user: any) {
+    return this.usersService.getUsageStats(user.id);
+  }
+
   @Patch('me')
   updateProfile(@CurrentUser() user: any, @Body() updateDto: any) {
     return this.usersService.updateProfile(user.id, updateDto);

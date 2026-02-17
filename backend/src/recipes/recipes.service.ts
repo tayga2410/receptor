@@ -1,8 +1,10 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateRecipeDto, UpdateRecipeDto } from './dto/recipe.dto';
 import { CalculatorService } from '../calculator/calculator.service';
-import { Currency } from '@prisma/client';
+import { Currency, SubscriptionType } from '@prisma/client';
+
+const FREE_TIER_RECIPE_LIMIT = 5;
 
 @Injectable()
 export class RecipesService {
@@ -10,6 +12,50 @@ export class RecipesService {
     private prisma: PrismaService,
     private calculator: CalculatorService,
   ) {}
+
+  // Проверка лимита рецептов для FREE подписки
+  private async checkRecipeLimit(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionType: true, subscriptionExpiresAt: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Пользователь не найден');
+    }
+
+    // Если PREMIUM или AMBASSADOR с активной подпиской — безлимит
+    if (
+      user.subscriptionType === SubscriptionType.PREMIUM ||
+      user.subscriptionType === SubscriptionType.AMBASSADOR
+    ) {
+      // Проверяем не истекла ли подписка
+      if (user.subscriptionExpiresAt && new Date() > user.subscriptionExpiresAt) {
+        // Подписка истекла — возвращаем на FREE
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            subscriptionType: SubscriptionType.FREE,
+            subscriptionExpiresAt: null,
+          },
+        });
+        // Теперь проверяем лимит
+      } else {
+        return; // Подписка активна — ограничений нет
+      }
+    }
+
+    // Для FREE — проверяем лимит
+    const currentCount = await this.prisma.recipe.count({
+      where: { userId },
+    });
+
+    if (currentCount >= FREE_TIER_RECIPE_LIMIT) {
+      throw new ForbiddenException(
+        `Достигнут лимит рецептов (${FREE_TIER_RECIPE_LIMIT}). Оформите Premium для безлимитного доступа.`
+      );
+    }
+  }
 
   async findAll(userId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
@@ -70,6 +116,9 @@ export class RecipesService {
   }
 
   async create(userId: string, createRecipeDto: CreateRecipeDto) {
+    // Проверка лимита рецептов
+    await this.checkRecipeLimit(userId);
+
     const recipe = await this.prisma.recipe.create({
       data: {
         ...createRecipeDto,

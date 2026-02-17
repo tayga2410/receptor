@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -20,21 +21,30 @@ import useStore from '../store/useStore';
 
 const ProfileScreen = ({ navigation }) => {
   const { t } = useTranslation();
-  const { user, logout, updateUserCurrency } = useStore();
+  const { user, logout, updateUser, updateUserCurrency } = useStore();
   const [loading, setLoading] = useState(false);
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [updatingCurrency, setUpdatingCurrency] = useState(false);
 
-  useEffect(() => {
-    loadUserProfile();
-  }, []);
+  // Обновляем данные пользователя при каждом открытии экрана
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserProfile();
+    }, [])
+  );
 
   const loadUserProfile = async () => {
     try {
       const response = await api.users.getProfile();
       if (response.ok) {
         const userData = await response.json();
-        updateUserCurrency(userData.currency);
+        // Обновляем все данные пользователя в store
+        updateUser({
+          currency: userData.currency,
+          subscriptionType: userData.subscriptionType,
+          subscriptionExpiresAt: userData.subscriptionExpiresAt,
+          isAdmin: userData.isAdmin,
+        });
       }
     } catch (error) {
       console.error('Failed to load user profile:', error);
@@ -89,7 +99,9 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>{t('subscription_type')}</Text>
             <Text style={styles.infoValue}>
-              {user?.subscriptionType === 'PREMIUM' ? t('premium_plan') : t('free_plan')}
+              {user?.subscriptionType === 'PREMIUM' ? t('premium_plan') :
+               user?.subscriptionType === 'AMBASSADOR' ? 'Ambassador' :
+               t('free_plan')}
             </Text>
           </View>
         </View>
@@ -119,6 +131,17 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.premiumButtonText}>🌟 {t('go_premium')}</Text>
           </Pressable>
         </View>
+
+        {/* Admin Panel Button - visible only for admins */}
+        {user?.isAdmin && (
+          <View style={styles.section}>
+            <Pressable style={styles.adminButton} onPress={() => navigation.navigate('AdminDashboard')}>
+              <MaterialCommunityIcons name="shield-account" size={20} color="#9C27B0" />
+              <Text style={styles.adminButtonText}>🛡️ Админ-панель</Text>
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#9C27B0" />
+            </Pressable>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Pressable style={styles.logoutButton} onPress={handleLogout}>
@@ -244,6 +267,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  adminButton: {
+    backgroundColor: '#9C27B015',
+    padding: THEME.spacing.md,
+    borderRadius: THEME.roundness,
+    borderWidth: 1,
+    borderColor: '#9C27B0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  adminButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9C27B0',
+    flex: 1,
+    marginLeft: 10,
   },
   logoutButton: {
     backgroundColor: COLORS.error,

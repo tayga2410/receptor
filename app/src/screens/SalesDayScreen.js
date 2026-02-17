@@ -16,7 +16,7 @@ import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import { getCurrencySymbol } from '../utils/currency';
-import { formatUnit } from '../utils/units';
+import useStore from '../store/useStore';
 
 const getDateLocale = (language) => {
   switch (language) {
@@ -27,12 +27,42 @@ const getDateLocale = (language) => {
   }
 };
 
+// Склонение слова "позиция" в зависимости от языка и числа
+const getItemsWord = (count, language) => {
+  if (language === 'EN') {
+    return count === 1 ? 'item' : 'items';
+  }
+
+  if (language === 'KZ') {
+    // В казахском нет склонения по числам, но можно использовать разные формы
+    return count === 1 ? 'позиция' : 'позиция';
+  }
+
+  // Русский язык
+  const lastTwo = Math.abs(count) % 100;
+  const lastOne = lastTwo % 10;
+
+  if (lastTwo >= 11 && lastTwo <= 19) {
+    return 'позиций';
+  }
+  if (lastOne === 1) {
+    return 'позиция';
+  }
+  if (lastOne >= 2 && lastOne <= 4) {
+    return 'позиции';
+  }
+  return 'позиций';
+};
+
 const SalesDayScreen = ({ route, navigation }) => {
   const { t, language } = useTranslation();
   const { date } = route.params;
+  const user = useStore((state) => state.user);
+  const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
   const [salesData, setSalesData] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedOrders, setExpandedOrders] = useState({});
 
   useFocusEffect(
     useCallback(() => {
@@ -45,9 +75,7 @@ const SalesDayScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       const response = await api.sales.getByDate(date);
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Sales data received:', JSON.stringify(data, null, 2));
       setSalesData(data);
     } catch (error) {
       console.error('Failed to load sales:', error);
@@ -68,9 +96,9 @@ const SalesDayScreen = ({ route, navigation }) => {
   };
 
   const getDaysInMonth = (dateString) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
+    const d = new Date(dateString);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
     return new Date(year, month, 0).getDate();
   };
 
@@ -83,52 +111,22 @@ const SalesDayScreen = ({ route, navigation }) => {
     return format(dateObj, 'd MMMM yyyy', { locale: getDateLocale(language) });
   };
 
-  const handleAddPortion = async (salesRecordId, itemId) => {
-    try {
-      await api.sales.addPortion(salesRecordId, itemId, 1);
-      loadSalesForDay();
-    } catch (error) {
-      Alert.alert(t('error'), t('error_delete_sale'));
-    }
+  const formatTime = (dateString) => {
+    const dateObj = new Date(dateString);
+    return format(dateObj, 'HH:mm', { locale: getDateLocale(language) });
   };
 
-  const handleRemovePortion = async (salesRecordId, itemId, currentQuantity) => {
-    if (currentQuantity <= 1) {
-      // If only 1 portion left, confirm complete removal
-      Alert.alert(
-        t('delete'),
-        t('confirm_delete_recipe'),
-        [
-          { text: t('cancel'), style: 'cancel' },
-          {
-            text: t('delete'),
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await api.sales.removeItem(salesRecordId, itemId);
-                loadSalesForDay();
-              } catch (error) {
-                Alert.alert(t('error'), t('error_delete_sale'));
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    try {
-      await api.sales.removePortion(salesRecordId, itemId, 1);
-      loadSalesForDay();
-    } catch (error) {
-      Alert.alert(t('error'), t('error_delete_sale'));
-    }
+  const toggleOrderExpand = (orderId) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
   };
 
-  const handleRemoveItem = async (salesRecordId, itemId) => {
+  const handleDeleteOrder = async (orderId) => {
     Alert.alert(
-      t('delete'),
-      t('confirm_delete_recipe'),
+      t('delete_order'),
+      t('confirm_delete_order'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -136,7 +134,7 @@ const SalesDayScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.sales.removeItem(salesRecordId, itemId);
+              await api.sales.delete(orderId);
               loadSalesForDay();
             } catch (error) {
               Alert.alert(t('error'), t('error_delete_sale'));
@@ -147,69 +145,107 @@ const SalesDayScreen = ({ route, navigation }) => {
     );
   };
 
-  const renderSaleItem = ({ item }) => {
-    const revenue = item.snapshotSalePrice * item.quantity;
-    const cost = item.snapshotCostPrice * item.quantity;
-    const profit = revenue - cost;
+  const handleEditOrder = (order) => {
+    navigation.navigate('EditSales', { orderId: order.id, date });
+  };
+
+  const renderOrderItem = ({ item: order }) => {
+    const isExpanded = expandedOrders[order.id];
 
     return (
-      <View style={styles.saleCard}>
-        <View style={styles.saleHeader}>
-          <Text style={styles.recipeName}>{item.recipeName || t('unnamed_recipe')}</Text>
-          <View style={styles.quantityControls}>
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => handleRemovePortion(item.salesRecordId, item.id, item.quantity)}
-            >
-              <MaterialCommunityIcons name="minus" size={18} color={COLORS.error} />
-            </TouchableOpacity>
-            <Text style={styles.quantity}>{item.quantity}</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => handleAddPortion(item.salesRecordId, item.id)}
-            >
-              <MaterialCommunityIcons name="plus" size={18} color={COLORS.success} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.saleDetails}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>{t('sale_price')}:</Text>
-            <Text style={styles.detailValue}>
-              {item.snapshotSalePrice.toFixed(2)} {getCurrencySymbol(item.currency)}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>{t('cost_at_moment')}:</Text>
-            <Text style={styles.detailValue}>
-              {item.snapshotCostPrice.toFixed(2)} {getCurrencySymbol(item.currency)}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>{t('profit_per_portion')}:</Text>
-            <Text style={[
-              styles.detailValue,
-              profit >= 0 ? styles.profitPositive : styles.profitNegative
-            ]}>
-              {(item.snapshotSalePrice - item.snapshotCostPrice).toFixed(2)} {getCurrencySymbol(item.currency)}
-            </Text>
-          </View>
-          <View style={[styles.detailRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>{t('total')}:</Text>
-            <Text style={styles.totalValue}>
-              {revenue.toFixed(2)} {getCurrencySymbol(item.currency)}
-            </Text>
-          </View>
-        </View>
-
+      <View style={styles.orderCard}>
+        {/* Order Header */}
         <TouchableOpacity
-          style={styles.deleteItemButton}
-          onPress={() => handleRemoveItem(item.salesRecordId, item.id)}
+          style={styles.orderHeader}
+          onPress={() => toggleOrderExpand(order.id)}
         >
-          <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLORS.error} />
-          <Text style={styles.deleteItemText}>{t('delete_recipe')}</Text>
+          <View style={styles.orderHeaderLeft}>
+            <MaterialCommunityIcons
+              name={isExpanded ? "chevron-down" : "chevron-right"}
+              size={20}
+              color={COLORS.textLight}
+            />
+            <View>
+              <Text style={styles.orderTime}>{formatTime(order.createdAt)}</Text>
+              <Text style={styles.orderItemsCount}>
+                {order.items.length} {getItemsWord(order.items.length, language)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.orderHeaderRight}>
+            <View style={styles.orderProfitContainer}>
+              <Text style={[
+                styles.orderProfit,
+                order.profit >= 0 ? styles.profitPositive : styles.profitNegative
+              ]}>
+                {order.profit >= 0 ? '+' : ''}{order.profit.toFixed(0)} {currencySymbol}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.orderEditButton}
+              onPress={() => handleEditOrder(order)}
+            >
+              <MaterialCommunityIcons name="pencil" size={18} color={COLORS.accent} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.orderDeleteButton}
+              onPress={() => handleDeleteOrder(order.id)}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLORS.error} />
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
+
+        {/* Order Content (expanded) */}
+        {isExpanded && (
+          <View style={styles.orderContent}>
+            {/* Items list */}
+            {order.items.map((item) => {
+              const revenue = item.snapshotSalePrice * item.quantity;
+              return (
+                <View key={item.id} style={styles.orderItemRow}>
+                  <Text style={styles.orderItemName}>{item.recipeName || t('unnamed_recipe')}</Text>
+                  <Text style={styles.orderItemQty}>{item.quantity} x {item.snapshotSalePrice.toFixed(0)}</Text>
+                  <Text style={styles.orderItemTotal}>{revenue.toFixed(0)} {currencySymbol}</Text>
+                </View>
+              );
+            })}
+
+            {/* Order Summary */}
+            <View style={styles.orderSummary}>
+              <View style={styles.orderSummaryRow}>
+                <Text style={styles.orderSummaryLabel}>{t('revenue')}</Text>
+                <Text style={styles.orderSummaryValue}>{order.revenue.toFixed(0)} {currencySymbol}</Text>
+              </View>
+              <View style={styles.orderSummaryRow}>
+                <Text style={styles.orderSummaryLabel}>{t('cost')}</Text>
+                <Text style={styles.orderSummaryValue}>-{order.cost.toFixed(0)} {currencySymbol}</Text>
+              </View>
+              {order.expenseItemsTotal > 0 && (
+                <View style={styles.orderSummaryRow}>
+                  <Text style={styles.orderSummaryLabel}>{t('expense_items')}</Text>
+                  <Text style={styles.orderSummaryValue}>-{order.expenseItemsTotal.toFixed(0)} {currencySymbol}</Text>
+                </View>
+              )}
+              {order.deliveryFee > 0 && (
+                <View style={styles.orderSummaryRow}>
+                  <Text style={styles.orderSummaryLabel}>{t('delivery')}</Text>
+                  <Text style={styles.orderSummaryValue}>-{order.deliveryFee.toFixed(0)} {currencySymbol}</Text>
+                </View>
+              )}
+              <View style={[styles.orderSummaryRow, styles.orderProfitRow]}>
+                <Text style={styles.orderProfitLabel}>{t('profit')}</Text>
+                <Text style={[
+                  styles.orderProfitValue,
+                  order.profit >= 0 ? styles.profitPositive : styles.profitNegative
+                ]}>
+                  {order.profit >= 0 ? '+' : ''}{order.profit.toFixed(0)} {currencySymbol}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -222,7 +258,10 @@ const SalesDayScreen = ({ route, navigation }) => {
     );
   }
 
-  const hasSales = salesData?.items && salesData.items.length > 0;
+  const hasSales = salesData?.orders && salesData.orders.length > 0;
+  const netProfit = salesData
+    ? salesData.totalProfit - dailyExpenses - (salesData.totalExpenseItems || 0) - (salesData.totalDeliveryFee || 0)
+    : 0;
 
   return (
     <View style={styles.container}>
@@ -231,90 +270,54 @@ const SalesDayScreen = ({ route, navigation }) => {
       </View>
 
       {hasSales ? (
-        <>
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryCol}>
-                <Text style={styles.summaryLabel}>{t('total_revenue')}</Text>
-                <Text style={styles.summaryValue}>{salesData.totalRevenue.toFixed(2)}</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryCol}>
-                <Text style={styles.summaryLabel}>{t('total_cost')}</Text>
-                <Text style={styles.summaryValue}>{salesData.totalCost.toFixed(2)}</Text>
-              </View>
-            </View>
-            <View style={styles.summaryDividerLine} />
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryCol}>
-                <Text style={styles.summaryLabel}>{t('daily_expenses')}</Text>
-                <Text style={[styles.summaryValue, styles.expensesValue]}>{dailyExpenses.toFixed(2)}</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryCol}>
-                <Text style={styles.summaryLabel}>{t('total_profit')}</Text>
-                <Text style={[
-                  styles.summaryValue,
-                  salesData.totalProfit >= 0 ? styles.profitPositive : styles.profitNegative
-                ]}>
-                  {salesData.totalProfit.toFixed(2)}
-                </Text>
-              </View>
-            </View>
-            <View style={[styles.summaryDividerLine, styles.netProfitDivider]} />
-            <View style={styles.netProfitRow}>
-              <Text style={styles.netProfitLabel}>{t('net_profit')}</Text>
-              <Text style={[
-                styles.netProfitValue,
-                (salesData.totalProfit - dailyExpenses - (salesData.totalExpenseItems || 0) - (salesData.totalDeliveryFee || 0)) >= 0 ? styles.profitPositive : styles.profitNegative
-              ]}>
-                {(salesData.totalProfit - dailyExpenses - (salesData.totalExpenseItems || 0) - (salesData.totalDeliveryFee || 0)).toFixed(2)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Expense Items Section */}
-          {salesData.expenseItems && salesData.expenseItems.length > 0 && (
-            <View style={styles.expenseItemsSection}>
-              <View style={styles.expenseItemsHeader}>
-                <MaterialCommunityIcons name="package-variant" size={18} color={COLORS.error} />
-                <Text style={styles.expenseItemsTitle}>{t('expense_items')}</Text>
-                <Text style={styles.expenseItemsTotal}>
-                  {(salesData.totalExpenseItems || 0).toFixed(2)}
-                </Text>
-              </View>
-              {salesData.expenseItems.map((item, index) => (
-                <View key={index} style={styles.expenseItemRow}>
-                  <Text style={styles.expenseItemName}>{item.expenseItem?.name || t('expense_item_name')}</Text>
-                  <Text style={styles.expenseItemQty}>{item.quantity} {formatUnit(item.expenseItem?.unit?.name, item.expenseItem?.unit?.shortName, language)}</Text>
-                  <Text style={styles.expenseItemPrice}>
-                    {(item.snapshotPrice * item.quantity).toFixed(2)}
-                  </Text>
+        <FlatList
+          data={salesData.orders}
+          renderItem={renderOrderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryCol}>
+                  <Text style={styles.summaryLabel}>{t('total_revenue')}</Text>
+                  <Text style={styles.summaryValue}>{salesData.totalRevenue.toFixed(0)}</Text>
                 </View>
-              ))}
-            </View>
-          )}
-
-          {/* Delivery Section */}
-          {(salesData.totalDeliveryFee > 0) && (
-            <View style={styles.deliverySection}>
-              <View style={styles.deliveryHeader}>
-                <MaterialCommunityIcons name="truck-delivery" size={18} color={COLORS.textLight} />
-                <Text style={styles.deliveryTitle}>{t('delivery')}</Text>
-                <Text style={styles.deliveryTotal}>
-                  {(salesData.totalDeliveryFee || 0).toFixed(2)}
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryCol}>
+                  <Text style={styles.summaryLabel}>{t('total_cost')}</Text>
+                  <Text style={styles.summaryValue}>{salesData.totalCost.toFixed(0)}</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryCol}>
+                  <Text style={styles.summaryLabel}>{t('orders_count')}</Text>
+                  <Text style={styles.summaryValue}>{salesData.orders.length}</Text>
+                </View>
+              </View>
+              <View style={styles.summaryDividerLine} />
+              {/* Deductions */}
+              <View style={styles.deductionsRow}>
+                <Text style={styles.deductionsLabel}>{t('daily_expenses')}</Text>
+                <Text style={styles.deductionsValue}>-{dailyExpenses.toFixed(0)} {currencySymbol}</Text>
+              </View>
+              {(salesData.totalExpenseItems > 0 || salesData.totalDeliveryFee > 0) && (
+                <View style={styles.deductionsRow}>
+                  <Text style={styles.deductionsLabel}>{t('expense_items')} + {t('delivery')}</Text>
+                  <Text style={styles.deductionsValue}>-{((salesData.totalExpenseItems || 0) + (salesData.totalDeliveryFee || 0)).toFixed(0)} {currencySymbol}</Text>
+                </View>
+              )}
+              <View style={styles.summaryDividerLine} />
+              <View style={styles.netProfitRow}>
+                <Text style={styles.netProfitLabel}>{t('net_profit')}</Text>
+                <Text style={[
+                  styles.netProfitValue,
+                  netProfit >= 0 ? styles.profitPositive : styles.profitNegative
+                ]}>
+                  {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(0)} {currencySymbol}
                 </Text>
               </View>
             </View>
-          )}
-
-          <FlatList
-            data={salesData.items}
-            renderItem={renderSaleItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-          />
-        </>
+          }
+        />
       ) : (
         <View style={styles.emptyState}>
           <MaterialCommunityIcons name="cash-register" size={64} color={COLORS.textLight} />
@@ -329,14 +332,12 @@ const SalesDayScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      {hasSales && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('AddSales', { date })}
-        >
-          <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddSales', { date })}
+      >
+        <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -365,6 +366,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     margin: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
     backgroundColor: COLORS.surface,
     borderRadius: THEME.roundness,
     padding: THEME.spacing.md,
@@ -393,21 +395,31 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
     backgroundColor: COLORS.border,
-    marginHorizontal: THEME.spacing.sm,
   },
   summaryDividerLine: {
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: THEME.spacing.sm,
   },
-  netProfitDivider: {
-    marginTop: THEME.spacing.sm,
+  deductionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  deductionsLabel: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  deductionsValue: {
+    fontSize: 12,
+    color: COLORS.error,
+    fontWeight: '500',
   },
   netProfitRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: THEME.spacing.xs,
   },
   netProfitLabel: {
     fontSize: 14,
@@ -415,20 +427,8 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   netProfitValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-  },
-  summary: {
-    flexDirection: 'row',
-    padding: THEME.spacing.md,
-    gap: THEME.spacing.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
   },
   profitPositive: {
     color: COLORS.success,
@@ -436,179 +436,203 @@ const styles = StyleSheet.create({
   profitNegative: {
     color: COLORS.error,
   },
-  expensesValue: {
-    color: COLORS.warning || '#FF9800',
-  },
-  expenseItemsSection: {
-    margin: THEME.spacing.md,
-    marginTop: 0,
-    backgroundColor: COLORS.surface,
-    borderRadius: THEME.roundness,
-    padding: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  expenseItemsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: THEME.spacing.sm,
-    marginBottom: THEME.spacing.sm,
-    paddingBottom: THEME.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  expenseItemsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    flex: 1,
-  },
-  expenseItemsTotal: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.error,
-  },
-  expenseItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: THEME.spacing.xs,
-  },
-  expenseItemName: {
-    fontSize: 13,
-    color: COLORS.text,
-    flex: 1,
-  },
-  expenseItemQty: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginRight: THEME.spacing.md,
-  },
-  expenseItemPrice: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.error,
-  },
-  deliverySection: {
-    margin: THEME.spacing.md,
-    marginTop: 0,
-    backgroundColor: COLORS.surface,
-    borderRadius: THEME.roundness,
-    padding: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  deliveryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: THEME.spacing.sm,
-  },
-  deliveryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    flex: 1,
-  },
-  deliveryTotal: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.textLight,
-  },
   listContent: {
-    padding: THEME.spacing.md,
+    paddingBottom: 100,
   },
-  saleCard: {
+  // Order Card Styles
+  orderCard: {
     backgroundColor: COLORS.surface,
+    marginHorizontal: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
     borderRadius: THEME.roundness,
-    padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.md,
     borderWidth: 1,
     borderColor: COLORS.border,
+    overflow: 'hidden',
   },
-  saleHeader: {
+  orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.spacing.md,
-    paddingBottom: THEME.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    padding: THEME.spacing.md,
   },
-  recipeName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    flex: 1,
-  },
-  quantity: {
-    fontSize: 14,
-    color: COLORS.textLight,
-  },
-  quantityControls: {
+  orderHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: THEME.spacing.sm,
   },
-  removeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  orderTime: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  orderItemsCount: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  orderHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.sm,
+  },
+  orderProfitContainer: {
+    marginRight: THEME.spacing.sm,
+  },
+  orderProfit: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  orderEditButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderDeleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: COLORS.error + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.success + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saleDetails: {
-    gap: THEME.spacing.xs,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  detailLabel: {
-    fontSize: 13,
-    color: COLORS.textLight,
-  },
-  detailValue: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.text,
-  },
-  totalRow: {
-    marginTop: THEME.spacing.xs,
-    paddingTop: THEME.spacing.xs,
+  orderContent: {
+    paddingHorizontal: THEME.spacing.md,
+    paddingBottom: THEME.spacing.md,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
-  totalLabel: {
+  orderItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: THEME.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  orderItemInfo: {
+    flex: 1,
+  },
+  orderItemName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  orderItemPrice: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  orderItemControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.xs,
+  },
+  qtyButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  qtyText: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
+    minWidth: 20,
+    textAlign: 'center',
   },
-  totalValue: {
+  orderItemTotal: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.accent,
+    marginLeft: THEME.spacing.sm,
   },
-  deleteItemButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: THEME.spacing.xs,
+  orderSection: {
     marginTop: THEME.spacing.sm,
     paddingTop: THEME.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
-  deleteItemText: {
+  orderSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    marginBottom: THEME.spacing.xs,
+  },
+  expenseItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: THEME.spacing.xs,
+  },
+  expenseItemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.xs,
+  },
+  expenseItemName: {
+    fontSize: 13,
+    color: COLORS.text,
+  },
+  expenseItemValue: {
     fontSize: 13,
     color: COLORS.error,
+  },
+  deliveryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  deliveryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.xs,
+  },
+  deliveryLabel: {
+    fontSize: 13,
+    color: COLORS.text,
+  },
+  deliveryValue: {
+    fontSize: 13,
+    color: COLORS.textLight,
+  },
+  orderSummary: {
+    marginTop: THEME.spacing.sm,
+    paddingTop: THEME.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  orderSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  orderSummaryLabel: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  orderSummaryValue: {
+    fontSize: 12,
+    color: COLORS.text,
+  },
+  orderProfitRow: {
+    marginTop: THEME.spacing.xs,
+    paddingTop: THEME.spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  orderProfitLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  orderProfitValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   emptyState: {
     flex: 1,

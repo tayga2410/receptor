@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
@@ -16,12 +17,22 @@ import { api } from '../services/api';
 import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
 import useStore from '../store/useStore';
 
+const FREE_RECIPE_LIMIT = 5;
+
 const RecipesScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [limitModalVisible, setLimitModalVisible] = useState(false);
+  const [limitModalType, setLimitModalType] = useState('info'); // 'info' | 'blocked'
+
+  // Проверка подписки
+  const isPremium = user?.subscriptionType === 'PREMIUM' || user?.subscriptionType === 'AMBASSADOR';
+  const recipesCount = recipes.length;
+  const canCreateRecipe = isPremium || recipesCount < FREE_RECIPE_LIMIT;
+  const isNearLimit = !isPremium && recipesCount >= FREE_RECIPE_LIMIT - 1;
 
   useEffect(() => {
     loadRecipes();
@@ -54,7 +65,17 @@ const RecipesScreen = ({ navigation }) => {
   };
 
   const handleAddRecipe = () => {
+    if (!canCreateRecipe) {
+      setLimitModalType('blocked');
+      setLimitModalVisible(true);
+      return;
+    }
     navigation.navigate('RecipeForm');
+  };
+
+  const handleInfoPress = () => {
+    setLimitModalType('info');
+    setLimitModalVisible(true);
   };
 
   const handleRecipePress = (recipe) => {
@@ -192,6 +213,23 @@ const RecipesScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {/* Счётчик рецептов для FREE пользователей */}
+      {!isPremium && (
+        <View style={[styles.limitBanner, isNearLimit && styles.limitBannerWarning]}>
+          <MaterialCommunityIcons
+            name={isNearLimit ? "alert-circle" : "information"}
+            size={18}
+            color={isNearLimit ? "#FF9800" : COLORS.textLight}
+          />
+          <Text style={[styles.limitText, isNearLimit && styles.limitTextWarning]}>
+            {recipesCount}/{FREE_RECIPE_LIMIT} {t('recipes_used')}
+          </Text>
+          <TouchableOpacity onPress={handleInfoPress}>
+            <MaterialCommunityIcons name="help-circle" size={18} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         data={recipes}
         renderItem={renderRecipe}
@@ -206,6 +244,70 @@ const RecipesScreen = ({ navigation }) => {
           <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
         </TouchableOpacity>
       )}
+
+      {/* Модалка лимита */}
+      <Modal
+        visible={limitModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLimitModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {limitModalType === 'blocked' ? (
+              <>
+                <MaterialCommunityIcons name="lock" size={48} color={COLORS.error} />
+                <Text style={styles.modalTitle}>{t('limit_reached')}</Text>
+                <Text style={styles.modalText}>
+                  {t('limit_reached_text', { limit: FREE_RECIPE_LIMIT })}
+                </Text>
+                <View style={styles.modalFeatures}>
+                  <Text style={styles.featureItem}>✓ {t('unlimited_recipes')}</Text>
+                  <Text style={styles.featureItem}>✓ {t('sales_analytics')}</Text>
+                  <Text style={styles.featureItem}>✓ {t('priority_support')}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.upgradeButton}
+                  onPress={() => {
+                    setLimitModalVisible(false);
+                    navigation.navigate('ProfileScreen');
+                  }}
+                >
+                  <Text style={styles.upgradeButtonText}>{t('go_premium')}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <MaterialCommunityIcons name="information" size={48} color={COLORS.accent} />
+                <Text style={styles.modalTitle}>{t('free_plan_info')}</Text>
+                <Text style={styles.modalText}>
+                  {t('free_plan_info_text', { limit: FREE_RECIPE_LIMIT, count: recipesCount })}
+                </Text>
+                <View style={styles.modalFeatures}>
+                  <Text style={styles.featureItem}>✓ {recipesCount}/{FREE_RECIPE_LIMIT} {t('recipes_used')}</Text>
+                  <Text style={styles.featureItem}>✓ {t('ingredients_unlimited')}</Text>
+                  <Text style={styles.featureItem}>✓ {t('calculator_included')}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.upgradeButton}
+                  onPress={() => {
+                    setLimitModalVisible(false);
+                    navigation.navigate('ProfileScreen');
+                  }}
+                >
+                  <Text style={styles.upgradeButtonText}>{t('go_premium')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setLimitModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>{t('maybe_later')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -214,6 +316,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  limitBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: THEME.spacing.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: 6,
+  },
+  limitBannerWarning: {
+    backgroundColor: '#FFF3E0',
+    borderBottomColor: '#FFB74D',
+  },
+  limitText: {
+    fontSize: 13,
+    color: COLORS.textLight,
+  },
+  limitTextWarning: {
+    color: '#E65100',
+    fontWeight: '600',
   },
   listContent: {
     padding: THEME.spacing.md,
@@ -328,6 +453,65 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 340,
+    alignItems: 'center',
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modalText: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  modalFeatures: {
+    alignSelf: 'stretch',
+    marginBottom: 24,
+  },
+  featureItem: {
+    fontSize: 14,
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  upgradeButton: {
+    backgroundColor: COLORS.accent,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 25,
+    width: '100%',
+    alignItems: 'center',
+  },
+  upgradeButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  closeButtonText: {
+    color: COLORS.textLight,
+    fontSize: 14,
   },
 });
 

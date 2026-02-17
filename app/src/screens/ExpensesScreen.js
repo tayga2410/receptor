@@ -18,8 +18,9 @@ import { api } from '../services/api';
 import useStore from '../store/useStore';
 import { getCurrencySymbol, CURRENCIES } from '../utils/currency';
 import { formatUnit } from '../utils/units';
+import PremiumGate from '../components/PremiumGate';
 
-const ExpensesScreen = () => {
+const ExpensesScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
   const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
@@ -274,26 +275,27 @@ const ExpensesScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'monthly' && styles.tabActive]}
-          onPress={() => setActiveTab('monthly')}
-        >
-          <Text style={[styles.tabText, activeTab === 'monthly' && styles.tabTextActive]}>
-            {t('monthly_tab')}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'items' && styles.tabActive]}
-          onPress={() => setActiveTab('items')}
-        >
-          <Text style={[styles.tabText, activeTab === 'items' && styles.tabTextActive]}>
-            {t('items_tab')}
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <PremiumGate navigation={navigation}>
+      <View style={styles.container}>
+        {/* Tabs */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'monthly' && styles.tabActive]}
+            onPress={() => setActiveTab('monthly')}
+          >
+            <Text style={[styles.tabText, activeTab === 'monthly' && styles.tabTextActive]}>
+              {t('monthly_tab')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'items' && styles.tabActive]}
+            onPress={() => setActiveTab('items')}
+          >
+            <Text style={[styles.tabText, activeTab === 'items' && styles.tabTextActive]}>
+              {t('items_tab')}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
       {activeTab === 'monthly' && (
         <>
@@ -528,7 +530,8 @@ const ExpensesScreen = () => {
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+    </PremiumGate>
   );
 };
 

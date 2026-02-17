@@ -29,6 +29,7 @@ export class AuthService {
         name: true,
         currency: true,
         subscriptionType: true,
+        isAdmin: true,
         createdAt: true,
       },
     });
@@ -66,6 +67,7 @@ export class AuthService {
         name: user.name,
         currency: user.currency,
         subscriptionType: user.subscriptionType,
+        isAdmin: user.isAdmin,
         createdAt: user.createdAt,
       },
       token,

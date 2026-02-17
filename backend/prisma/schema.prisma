@@ -26,25 +26,28 @@ enum UnitType {
 enum SubscriptionType {
   FREE
   PREMIUM
+  AMBASSADOR
 }
 
 model User {
-  id                String        @id @default(uuid()) @db.Uuid
-  username          String        @unique
-  email             String        @unique
-  password          String
-  name              String
-  currency          Currency      @default(KZT)
-  subscriptionType SubscriptionType @default(FREE)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                   String           @id @default(uuid()) @db.Uuid
+  username             String           @unique
+  email                String           @unique
+  password             String
+  name                 String
+  currency             Currency         @default(KZT)
+  subscriptionType     SubscriptionType @default(FREE)
+  subscriptionExpiresAt DateTime?
+  isAdmin              Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
-  ingredients       Ingredient[]
-  recipes           Recipe[]
-  units             Unit[]
-  expenses          Expense[]
-  expenseItems      ExpenseItem[]
-  salesRecords      SalesRecord[]
+  ingredients          Ingredient[]
+  recipes              Recipe[]
+  units                Unit[]
+  expenses             Expense[]
+  expenseItems         ExpenseItem[]
+  salesRecords         SalesRecord[]
 }
 
 model Unit {

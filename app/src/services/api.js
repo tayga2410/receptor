@@ -349,4 +349,23 @@ export const api = {
       method: 'DELETE',
     }),
   },
+  admin: {
+    getDashboard: () => apiFetch('/admin/dashboard'),
+    getUsers: () => apiFetch('/admin/users'),
+    searchUsers: (query) => apiFetch(`/admin/users/search?q=${encodeURIComponent(query)}`),
+    grantAmbassador: (userId, months = 12) => apiFetch(`/admin/users/${userId}/ambassador`, {
+      method: 'POST',
+      body: JSON.stringify({ months }),
+    }),
+    grantPremium: (userId, months = 1) => apiFetch(`/admin/users/${userId}/premium`, {
+      method: 'POST',
+      body: JSON.stringify({ months }),
+    }),
+    revokeSubscription: (userId) => apiFetch(`/admin/users/${userId}/revoke`, {
+      method: 'POST',
+    }),
+    deleteUser: (userId) => apiFetch(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    }),
+  },
 };

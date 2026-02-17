@@ -11,12 +11,14 @@ import IngredientsScreen from '../screens/IngredientsScreen';
 import SalesCalendarScreen from '../screens/SalesCalendarScreen';
 import SalesDayScreen from '../screens/SalesDayScreen';
 import AddSalesScreen from '../screens/AddSalesScreen';
+import EditSalesScreen from '../screens/EditSalesScreen';
 import SalesAnalyticsScreen from '../screens/SalesAnalyticsScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import IngredientFormScreen from '../screens/IngredientFormScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import LanguageSelector from '../components/LanguageSelector';
 
 const Tab = createBottomTabNavigator();
@@ -159,6 +161,11 @@ const SalesStack = () => {
         options={{ title: t('add_sale') }}
       />
       <Stack.Screen
+        name="EditSales"
+        component={EditSalesScreen}
+        options={{ title: t('edit') }}
+      />
+      <Stack.Screen
         name="SalesAnalytics"
         component={SalesAnalyticsScreen}
         options={{ title: t('analytics') }}
@@ -232,6 +239,11 @@ const ProfileStack = () => {
         name="ChangePassword"
         component={ChangePasswordScreen}
         options={{ title: t('change_password_title') }}
+      />
+      <Stack.Screen
+        name="AdminDashboard"
+        component={AdminDashboardScreen}
+        options={{ title: 'Админ-панель' }}
       />
     </Stack.Navigator>
   );

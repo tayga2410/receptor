@@ -115,6 +115,12 @@ const useStore = create(
       setToken: (token) => set({ token }),
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
+      updateUser: (userData) => {
+        const user = useStore.getState().user;
+        if (user) {
+          set({ user: { ...user, ...userData } });
+        }
+      },
       updateUserCurrency: (currency) => {
         const user = useStore.getState().user;
         if (user) {

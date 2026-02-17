@@ -22,6 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         name: true,
         currency: true,
         subscriptionType: true,
+        subscriptionExpiresAt: true,
+        isAdmin: true,
         createdAt: true,
       },
     });
@@ -30,6 +32,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
 
-    return user;
+    return {
+      ...user,
+      userId: user.id, // для удобства @CurrentUser('userId')
+    };
   }
 }

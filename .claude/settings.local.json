@@ -1,8 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)",
-      "Bash(npx expo start:*)"
+      "Edit"
     ]
-  }
+  },
+  "outputStyle": "Structural Thinking"
 }

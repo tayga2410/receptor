@@ -46,8 +46,13 @@ export const TranslationProvider = ({ children }) => {
     }
   };
 
-  const t = (key) => {
-    return TRANSLATIONS[language]?.[key] || key;
+  const t = (key, params = {}) => {
+    let text = TRANSLATIONS[language]?.[key] || key;
+    // Поддержка интерполяции {{param}}
+    Object.keys(params).forEach((param) => {
+      text = text.replace(new RegExp(`\\{\\{${param}\\}\\}`, 'g'), params[param]);
+    });
+    return text;
   };
 
   return (

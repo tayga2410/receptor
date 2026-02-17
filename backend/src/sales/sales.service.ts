@@ -52,13 +52,12 @@ export class SalesService {
         items: true,
         expenseItems: { include: { expenseItem: { include: { unit: true } } } },
       },
-      orderBy: { date: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     console.log('findByDate - records found:', records.length);
-    console.log('findByDate - records:', JSON.stringify(records, null, 2));
 
-    return this.aggregateDayRecords(records);
+    return this.formatDayRecords(records);
   }
 
   async findOne(id: string, userId: string) {
@@ -180,6 +179,10 @@ export class SalesService {
       updateData.date = updateSalesRecordDto.date;
     }
 
+    if (updateSalesRecordDto.deliveryFee !== undefined) {
+      updateData.deliveryFee = updateSalesRecordDto.deliveryFee;
+    }
+
     if (updateSalesRecordDto.items) {
       const recipeIds = updateSalesRecordDto.items.map(item => item.recipeId);
       const recipes = await this.prisma.recipe.findMany({
@@ -209,10 +212,54 @@ export class SalesService {
       };
     }
 
+    // Handle expense items update
+    if (updateSalesRecordDto.expenseItems) {
+      const expenseItemIds = updateSalesRecordDto.expenseItems.map(e => e.expenseItemId);
+      const expenseItems = await this.prisma.expenseItem.findMany({
+        where: { id: { in: expenseItemIds } },
+        include: { unit: true },
+      });
+
+      const expenseItemMap = new Map(expenseItems.map(e => [e.id, e]));
+      const allUnits = await this.prisma.unit.findMany();
+      const unitMap = new Map(allUnits.map(u => [u.id, u]));
+
+      const expenseItemsData = updateSalesRecordDto.expenseItems.map(item => {
+        const expenseItem = expenseItemMap.get(item.expenseItemId);
+
+        let finalQuantity = item.quantity;
+        if (item.unitId && item.unitId !== expenseItem.unitId) {
+          const fromUnit = unitMap.get(item.unitId);
+          const toUnit = expenseItem.unit;
+          if (fromUnit && toUnit) {
+            const fromFactor = fromUnit.conversionFactor || 1;
+            const toFactor = toUnit.conversionFactor || 1;
+            const inBase = item.quantity * fromFactor;
+            finalQuantity = inBase / toFactor;
+          }
+        }
+
+        return {
+          expenseItemId: item.expenseItemId,
+          quantity: finalQuantity,
+          snapshotPrice: expenseItem.pricePerUnit,
+          currency: expenseItem.currency,
+        };
+      });
+
+      updateData.expenseItems = {
+        deleteMany: {},
+        create: expenseItemsData,
+      };
+    }
+
     return this.prisma.salesRecord.update({
       where: { id },
       data: updateData,
-      include: { items: true },
+      include: {
+        items: true,
+        expenseItems: { include: { expenseItem: { include: { unit: true } } } },
+      },
     });
   }
 
@@ -401,37 +448,67 @@ export class SalesService {
       select: {
         date: true,
         items: true,
+        expenseItems: true,
+        deliveryFee: true,
       },
     });
 
-    const dailySales = new Map<number, number>();
+    const dailySales = new Map<number, { revenue: number; profit: number }>();
     for (const record of records) {
       const day = record.date.getDate();
-      const dailyTotal = record.items.reduce(
+
+      // Выручка
+      const revenue = record.items.reduce(
         (sum, item) => sum + item.snapshotSalePrice * item.quantity,
         0
       );
-      dailySales.set(day, (dailySales.get(day) || 0) + dailyTotal);
+
+      // Себестоимость
+      const cost = record.items.reduce(
+        (sum, item) => sum + item.snapshotCostPrice * item.quantity,
+        0
+      );
+
+      // Расходы на продукты для этой продажи
+      const expenseItemsTotal = (record.expenseItems || []).reduce(
+        (sum, ei) => sum + ei.snapshotPrice * ei.quantity,
+        0
+      );
+
+      // Плата за доставку
+      const deliveryFee = record.deliveryFee || 0;
+
+      // Чистая прибыль = выручка - себестоимость - расходы на продукты - доставка
+      const profit = revenue - cost - expenseItemsTotal - deliveryFee;
+
+      const existing = dailySales.get(day) || { revenue: 0, profit: 0 };
+      dailySales.set(day, {
+        revenue: existing.revenue + revenue,
+        profit: existing.profit + profit,
+      });
     }
 
-    const markedDates: Record<string, { totalSales: number; dotColor: string }> = {};
-    dailySales.forEach((total, day) => {
-      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      markedDates[dateStr] = {
-        totalSales: total,
-        dotColor: total > 0 ? '#4CAF50' : '#9E9E9E',
-      };
+    const markedDates: Record<string, { totalSales: number; totalProfit: number; dotColor: string }> = {};
+    dailySales.forEach((data, day) => {
+      // Only mark dates with actual sales
+      if (data.revenue > 0) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        markedDates[dateStr] = {
+          totalSales: data.revenue,
+          totalProfit: data.profit,
+          dotColor: data.profit >= 0 ? '#4CAF50' : '#F44336', // зелёный для прибыли, красный для убытка
+        };
+      }
     });
 
     return markedDates;
   }
 
-  private aggregateDayRecords(records: any[]) {
+  private formatDayRecords(records: any[]) {
     if (records.length === 0) {
       return {
         date: new Date(),
-        items: [],
-        expenseItems: [],
+        orders: [],
         totalRevenue: 0,
         totalCost: 0,
         totalProfit: 0,
@@ -440,32 +517,37 @@ export class SalesService {
       };
     }
 
-    // Add salesRecordId to each item for deletion functionality
-    const allItems = records.flatMap(r =>
-      r.items.map(item => ({
-        ...item,
-        salesRecordId: r.id,
-      }))
-    );
+    // Format each record as an order with its own profit calculation
+    const orders = records.map(record => {
+      const revenue = record.items.reduce((sum, item) => sum + item.snapshotSalePrice * item.quantity, 0);
+      const cost = record.items.reduce((sum, item) => sum + item.snapshotCostPrice * item.quantity, 0);
+      const expenseItemsTotal = (record.expenseItems || []).reduce((sum, ei) => sum + ei.snapshotPrice * ei.quantity, 0);
+      const deliveryFee = record.deliveryFee || 0;
+      const profit = revenue - cost - expenseItemsTotal - deliveryFee;
 
-    // Aggregate expense items
-    const allExpenseItems = records.flatMap(r =>
-      (r.expenseItems || []).map(ei => ({
-        ...ei,
-        salesRecordId: r.id,
-      }))
-    );
+      return {
+        id: record.id,
+        createdAt: record.createdAt,
+        items: record.items,
+        expenseItems: record.expenseItems || [],
+        deliveryFee,
+        revenue,
+        cost,
+        expenseItemsTotal,
+        profit,
+      };
+    });
 
-    const totalRevenue = allItems.reduce((sum, item) => sum + item.snapshotSalePrice * item.quantity, 0);
-    const totalCost = allItems.reduce((sum, item) => sum + item.snapshotCostPrice * item.quantity, 0);
-    const totalProfit = totalRevenue - totalCost;
-    const totalExpenseItems = allExpenseItems.reduce((sum, item) => sum + item.snapshotPrice * item.quantity, 0);
-    const totalDeliveryFee = records.reduce((sum, r) => sum + (r.deliveryFee || 0), 0);
+    // Calculate day totals
+    const totalRevenue = orders.reduce((sum, o) => sum + o.revenue, 0);
+    const totalCost = orders.reduce((sum, o) => sum + o.cost, 0);
+    const totalProfit = orders.reduce((sum, o) => sum + (o.revenue - o.cost), 0);
+    const totalExpenseItems = orders.reduce((sum, o) => sum + o.expenseItemsTotal, 0);
+    const totalDeliveryFee = orders.reduce((sum, o) => sum + o.deliveryFee, 0);
 
     return {
       date: records[0].date,
-      items: allItems,
-      expenseItems: allExpenseItems,
+      orders,
       totalRevenue,
       totalCost,
       totalProfit,

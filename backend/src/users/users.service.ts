@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { Currency } from '@prisma/client';
+import { Currency, SubscriptionType } from '@prisma/client';
+
+const FREE_TIER_RECIPE_LIMIT = 5;
 
 @Injectable()
 export class UsersService {
@@ -15,6 +17,8 @@ export class UsersService {
         name: true,
         currency: true,
         subscriptionType: true,
+        subscriptionExpiresAt: true,
+        isAdmin: true,
         createdAt: true,
       },
     });
@@ -23,7 +27,58 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    // Проверяем истечение подписки
+    const subscriptionStatus = this.getSubscriptionStatus(user);
+
+    return {
+      ...user,
+      subscriptionStatus,
+      recipeLimit: subscriptionStatus === 'active' ? null : FREE_TIER_RECIPE_LIMIT,
+    };
+  }
+
+  // Получить статус подписки
+  private getSubscriptionStatus(user: { subscriptionType: SubscriptionType; subscriptionExpiresAt: Date | null }): 'active' | 'expired' | 'free' {
+    if (user.subscriptionType === SubscriptionType.FREE) {
+      return 'free';
+    }
+
+    // Для PREMIUM или AMBASSADOR без даты истечения — считаем активной
+    if (!user.subscriptionExpiresAt) {
+      return 'active';
+    }
+
+    return new Date() <= user.subscriptionExpiresAt ? 'active' : 'expired';
+  }
+
+  // Получить статистику использования для пользователя
+  async getUsageStats(userId: string) {
+    const [user, recipesCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          subscriptionType: true,
+          subscriptionExpiresAt: true,
+        },
+      }),
+      this.prisma.recipe.count({ where: { userId } }),
+    ]);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isActive = user.subscriptionType !== SubscriptionType.FREE &&
+      (!user.subscriptionExpiresAt || new Date() <= user.subscriptionExpiresAt);
+
+    return {
+      recipesCount,
+      recipesLimit: isActive ? null : FREE_TIER_RECIPE_LIMIT,
+      canCreateRecipes: isActive || recipesCount < FREE_TIER_RECIPE_LIMIT,
+      subscriptionType: user.subscriptionType,
+      subscriptionExpiresAt: user.subscriptionExpiresAt,
+      subscriptionStatus: this.getSubscriptionStatus(user),
+    };
   }
 
   async updateProfile(userId: string, updateDto: any) {

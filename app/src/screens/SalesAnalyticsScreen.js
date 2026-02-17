@@ -20,7 +20,9 @@ const SalesAnalyticsScreen = () => {
   const user = useStore((state) => state.user);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [periodType, setPeriodType] = useState('week');
+  const [periodType, setPeriodType] = useState('month');
+
+  const isInitialLoad = analytics === null;
 
   useEffect(() => {
     loadAnalytics();
@@ -28,7 +30,10 @@ const SalesAnalyticsScreen = () => {
 
   const loadAnalytics = async () => {
     try {
-      setLoading(true);
+      // Показываем loading только при первоначальной загрузке
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       const now = new Date();
       let startDate;
       let endDate;
@@ -76,18 +81,17 @@ const SalesAnalyticsScreen = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
 
   const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      {loading && isInitialLoad && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      )}
+      <ScrollView style={styles.scrollView}>
       <View style={styles.periodSelector}>
         {['month', 'quarter', 'halfYear', 'year'].map((period) => (
           <TouchableOpacity
@@ -173,7 +177,8 @@ const SalesAnalyticsScreen = () => {
           <Text style={styles.noDataText}>{t('no_sales_selected_period')}</Text>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -182,10 +187,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  loadingContainer: {
+  scrollView: {
     flex: 1,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
   periodSelector: {
     flexDirection: 'row',

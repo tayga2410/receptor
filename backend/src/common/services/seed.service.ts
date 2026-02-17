@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UnitType } from '@prisma/client';
+import { UnitType, SubscriptionType } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class SeedService implements OnModuleInit {
@@ -8,6 +9,7 @@ export class SeedService implements OnModuleInit {
 
   async onModuleInit() {
     await this.seedSystemUnits();
+    await this.seedAdminUser();
   }
 
   private async seedSystemUnits() {
@@ -46,5 +48,53 @@ export class SeedService implements OnModuleInit {
     if (addedCount > 0) {
       console.log(`Added ${addedCount} new system units`);
     }
+  }
+
+  private async seedAdminUser() {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminName = process.env.ADMIN_NAME || 'Admin';
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+
+    // Если не заданы креды админа — пропускаем
+    if (!adminEmail || !adminPassword) {
+      return;
+    }
+
+    // Проверяем существует ли уже такой пользователь
+    const existingAdmin = await this.prisma.user.findUnique({
+      where: { email: adminEmail },
+    });
+
+    if (existingAdmin) {
+      // Если пользователь существует, но не админ — обновляем
+      if (!existingAdmin.isAdmin) {
+        await this.prisma.user.update({
+          where: { email: adminEmail },
+          data: {
+            isAdmin: true,
+            subscriptionType: SubscriptionType.PREMIUM,
+          },
+        });
+        console.log(`Updated user ${adminEmail} to admin`);
+      }
+      return;
+    }
+
+    // Создаём нового админа
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    await this.prisma.user.create({
+      data: {
+        email: adminEmail,
+        username: adminUsername,
+        password: hashedPassword,
+        name: adminName,
+        isAdmin: true,
+        subscriptionType: SubscriptionType.PREMIUM,
+      },
+    });
+
+    console.log(`Created admin user: ${adminEmail}`);
   }
 }
