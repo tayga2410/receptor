@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
@@ -30,6 +31,10 @@ const RecipeFormScreen = ({ route, navigation }) => {
   const [showIngredientPicker, setShowIngredientPicker] = useState(false);
   const [selectedIngredientIndex, setSelectedIngredientIndex] = useState(null); // Для редактирования
   const [tempSelectedIngredientId, setTempSelectedIngredientId] = useState(null); // Временное значение для Picker
+  const scrollViewRef = useRef(null);
+  const ingredientCardRefs = useRef([]);
+  const scrollYRef = useRef(0);
+  const screenHeight = Dimensions.get('window').height;
 
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
@@ -258,7 +263,14 @@ const RecipeFormScreen = ({ route, navigation }) => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContent}
+        onScroll={(e) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
+      >
         <View style={styles.form}>
           {/* Название рецепта */}
           <View style={styles.inputContainer}>
@@ -309,7 +321,11 @@ const RecipeFormScreen = ({ route, navigation }) => {
               </Text>
             ) : (
               formData.ingredients.map((ri, index) => (
-                <View key={index} style={styles.ingredientCard}>
+                <View
+                  key={index}
+                  ref={el => ingredientCardRefs.current[index] = el}
+                  style={styles.ingredientCard}
+                >
                   <View style={styles.ingredientRow}>
                     <TouchableOpacity
                       style={styles.ingredientInfo}
@@ -355,6 +371,26 @@ const RecipeFormScreen = ({ route, navigation }) => {
                         value={ri.quantity}
                         onChangeText={(value) => updateIngredientQuantity(index, value)}
                         keyboardType="decimal-pad"
+                        onFocus={() => {
+                          const cardRef = ingredientCardRefs.current[index];
+                          if (cardRef && cardRef.measureInWindow && scrollViewRef.current) {
+                            cardRef.measureInWindow((_x, y, _width, _height) => {
+                              // Желаемая позиция элемента - выше середины экрана (1/3 высоты)
+                              const targetY = screenHeight / 3;
+                              // Текущая позиция элемента на экране: y
+                              // Нужно проскроллить на разницу между текущей и желаемой позицией
+                              const scrollOffset = y - targetY;
+                              const newScrollY = scrollYRef.current + scrollOffset;
+
+                              if (scrollOffset > 0) {
+                                scrollViewRef.current.scrollTo({
+                                  y: newScrollY,
+                                  animated: true,
+                                });
+                              }
+                            });
+                          }
+                        }}
                       />
                       <TouchableOpacity
                         style={styles.quantityButton}
