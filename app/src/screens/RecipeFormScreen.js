@@ -156,16 +156,13 @@ const RecipeFormScreen = ({ route, navigation }) => {
   };
 
   const addIngredient = () => {
-    console.log('addIngredient called, availableIngredients:', availableIngredients.length);
     if (availableIngredients.length === 0) {
       Alert.alert(t('error'), t('no_ingredients'));
       return;
     }
     setSelectedIngredientIndex(null); // null означает добавление нового
     setTempSelectedIngredientId(''); // Пустое значение - пользователь сам выберет
-    console.log('Opening picker - user will select');
     setShowIngredientPicker(true);
-    console.log('showIngredientPicker set to true');
   };
 
   const changeIngredient = (index) => {
@@ -293,8 +290,6 @@ const RecipeFormScreen = ({ route, navigation }) => {
         unitId: ri.unitId,
       }));
 
-      console.log('Saving recipe with ingredients:', payloadIngredients);
-
       const costPrice = calculateCostPrice();
       const salePrice = calculateSalePrice();
 
@@ -308,8 +303,6 @@ const RecipeFormScreen = ({ route, navigation }) => {
         ingredients: payloadIngredients,
       };
 
-      console.log('Full payload:', JSON.stringify(payload, null, 2));
-
       let response;
       if (recipe?.id) {
         response = await api.recipes.update(recipe.id, payload);
@@ -318,7 +311,6 @@ const RecipeFormScreen = ({ route, navigation }) => {
       }
 
       const responseData = await response.json();
-      console.log('Response:', responseData);
 
       if (response.ok) {
         navigation.goBack();
@@ -397,7 +389,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
               </Text>
             ) : formData.ingredients.length === 0 ? (
               <Text style={styles.emptyText}>
-                Нажмите + чтобы выбрать ингредиент из списка
+                {t('select_ingredient_hint')}
               </Text>
             ) : (
               formData.ingredients.map((ri, index) => (
@@ -546,7 +538,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                   )}
                   ListEmptyComponent={
-                    <Text style={styles.emptyText}>Нет ингредиентов</Text>
+                    <Text style={styles.emptyText}>{t('no_ingredients')}</Text>
                   }
                 />
               </View>

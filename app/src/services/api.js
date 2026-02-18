@@ -28,7 +28,7 @@ initializeToken();
 let unsubscribe = null;
 const subscribeToTokenChanges = () => {
   if (unsubscribe) return;
-  
+
   unsubscribe = useStore.subscribe(
     (state) => state.token,
     (newToken) => {
@@ -62,16 +62,13 @@ export const setAuthToken = (newToken) => {
 
 // Функция для создания запроса с таймаутом
 const fetchWithTimeout = async (url, options, timeout = 15000) => {
-  console.log(`fetchWithTimeout: ${url}, timeout: ${timeout}ms`);
-  
   // Проверяем поддержку AbortController
   let controller = null;
   let timeoutId = null;
-  
+
   try {
     controller = new AbortController();
     timeoutId = setTimeout(() => {
-      console.log(`Request timeout for ${url}`);
       controller.abort();
     }, timeout);
 
@@ -83,27 +80,21 @@ const fetchWithTimeout = async (url, options, timeout = 15000) => {
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
-    
-    console.error('fetchWithTimeout error:', {
-      name: error.name,
-      message: error.message,
-      string: String(error)
-    });
-    
+
     // Если ошибка из-за таймаута
     if (error.name === 'AbortError' || String(error).includes('abort')) {
       const timeoutError = new Error('Request timeout');
       timeoutError.name = 'TimeoutError';
       throw timeoutError;
     }
-    
+
     // Если ошибка сети (важно для React Native)
     if (String(error).includes('Network') || String(error).includes('network')) {
       const networkError = new Error('Network request failed');
       networkError.name = 'NetworkError';
       throw networkError;
     }
-    
+
     throw error;
   }
 };
@@ -120,9 +111,6 @@ export const apiFetch = async (endpoint, options = {}) => {
 
   if (currentToken) {
     headers['Authorization'] = `Bearer ${currentToken}`;
-    console.log(`apiFetch: ${url} with token (first 10 chars): ${currentToken.substring(0, 10)}...`);
-  } else {
-    console.log(`apiFetch: ${url} WITHOUT token`);
   }
 
   try {
@@ -138,7 +126,6 @@ export const apiFetch = async (endpoint, options = {}) => {
       // Если у пользователя уже есть токен - значит сессия истекла
       // Если токена нет (например, при логине) - это просто неверные креды
       if (state.token || state.isAuthenticated) {
-        console.log('401 Unauthorized - session expired, logging out...');
 
         const language = state.language || 'RU';
         const translations = TRANSLATIONS[language] || TRANSLATIONS.RU;
@@ -173,12 +160,7 @@ export const apiFetch = async (endpoint, options = {}) => {
       }
 
       // Если токена нет - просто возвращаем response, вызывающий код обработает
-      console.log('401 Unauthorized - invalid credentials');
       return response;
-    }
-
-    if (!response.ok) {
-      console.log(`Response not ok: ${response.status} ${response.statusText}`);
     }
 
     return response;
@@ -216,6 +198,14 @@ export const api = {
     login: (data) => apiFetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+    google: (idToken) => apiFetch('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    }),
+    telegram: (telegramData) => apiFetch('/auth/telegram', {
+      method: 'POST',
+      body: JSON.stringify(telegramData),
     }),
   },
   users: {
@@ -367,5 +357,16 @@ export const api = {
     deleteUser: (userId) => apiFetch(`/admin/users/${userId}`, {
       method: 'DELETE',
     }),
+  },
+  billing: {
+    verifyGoogle: (data) => apiFetch('/billing/verify/google', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    verifyApple: (data) => apiFetch('/billing/verify/apple', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    getStatus: () => apiFetch('/billing/status'),
   },
 };

@@ -1,47 +1,89 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, TextInput, Pressable, Text, ActivityIndicator, Platform } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import Logo from '../components/Logo';
 import ErrorMessage from '../components/ErrorMessage';
 import useStore from '../store/useStore';
+import { configureGoogleSignIn, signInWithGoogle, openTelegramBot, isGoogleSignInSupported } from '../services/OAuthService';
 
 const LoginScreen = ({ navigation }) => {
   const { t, language, changeLanguage } = useTranslation();
   const login = useStore((state) => state.login);
+  const loginWithGoogle = useStore((state) => state.loginWithGoogle);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
 
   const languages = [
-    { code: 'KZ', label: 'KZ', flag: '🇰🇿' },
-    { code: 'RU', label: 'RU', flag: '🇷🇺' },
-    { code: 'EN', label: 'EN', flag: '🇬🇧' },
+    { code: 'KZ', label: 'KZ' },
+    { code: 'RU', label: 'RU' },
+    { code: 'EN', label: 'EN' },
   ];
+
+  // Конфигурируем Google Sign-In при загрузке экрана
+  useEffect(() => {
+    const init = async () => {
+      configureGoogleSignIn();
+      // Проверяем доступность после небольшой задержки (модуль должен загрузиться)
+      setTimeout(() => {
+        setGoogleAvailable(isGoogleSignInSupported());
+      }, 100);
+    };
+    init();
+  }, []);
 
   const handleLogin = async () => {
     setError(null);
-    console.log('handleLogin called');
 
     if (!username || !password) {
-      console.log('Validation failed: empty fields');
       setError(t('error_fill_all_fields'));
       return;
     }
 
     setLoading(true);
-    console.log('Calling login with:', { username });
     const result = await login(username, password);
-    console.log('Login result:', result);
     setLoading(false);
 
     if (!result.success) {
-      console.log('Login failed, setting error:', result.error);
       setError(result.error);
     }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setGoogleLoading(true);
+
+    try {
+      const result = await loginWithGoogle();
+
+      if (!result.success && result.error !== 'cancelled') {
+        setError(result.error || t('error_google_auth'));
+      }
+    } catch (err) {
+      setError(t('error_google_auth'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleTelegramLogin = async () => {
+    // Telegram Login Widget требует настройки бота
+    // Для полной интеграции нужно:
+    // 1. Создать бота через @BotFather
+    // 2. Установить домен: /setdomain
+    // 3. Добавить виджет на веб-страницу или использовать deep link
+
+    // Временно показываем информацию
+    setError('Telegram авторизация требует настройки бота. Обратитесь к администратору.');
+
+    // Альтернативно - открыть бота для авторизации:
+    // await openTelegramBot('your_bot_username');
   };
 
   return (
@@ -93,22 +135,38 @@ const LoginScreen = ({ navigation }) => {
           onPress={handleLogin}
           disabled={loading}
         >
-          <Text style={styles.primaryButtonText}>{loading ? 'Загрузка...' : t('login')}</Text>
+          <Text style={styles.primaryButtonText}>{loading ? t('loading') : t('login')}</Text>
         </Pressable>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>или</Text>
+          <Text style={styles.dividerText}>{t('or')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        <Pressable style={styles.socialButton}>
-          <Text style={styles.socialButtonText}>G {t('google_auth')}</Text>
-        </Pressable>
+        {/* Показываем OAuth кнопки только если доступен нативный модуль или не на вебе */}
+        {(googleAvailable || Platform.OS !== 'web') && (
+          <Pressable
+            style={[styles.socialButton, googleLoading && styles.disabledButton]}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
+          >
+            {googleLoading ? (
+              <ActivityIndicator size="small" color={COLORS.text} />
+            ) : (
+              <Text style={styles.socialButtonText}>G {t('google_sign_in')}</Text>
+            )}
+          </Pressable>
+        )}
 
-        <Pressable style={styles.socialButton}>
-          <Text style={styles.socialButtonText}>T {t('telegram_auth')}</Text>
-        </Pressable>
+        {Platform.OS !== 'web' && (
+          <Pressable
+            style={styles.socialButton}
+            onPress={handleTelegramLogin}
+          >
+            <Text style={styles.socialButtonText}>T {t('telegram_sign_in')}</Text>
+          </Pressable>
+        )}
 
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>{t('no_account')} </Text>
@@ -127,10 +185,17 @@ const LoginScreen = ({ navigation }) => {
               ]}
               onPress={() => changeLanguage(lang.code)}
             >
-              <Text style={styles.languageButtonText}>{lang.flag} {lang.label}</Text>
+              <Text style={styles.languageButtonText}>{lang.label}</Text>
             </Pressable>
           ))}
         </View>
+
+        <Pressable
+          style={styles.privacyLink}
+          onPress={() => navigation.navigate('PrivacyPolicy')}
+        >
+          <Text style={styles.privacyText}>{t('privacy_policy')}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -233,6 +298,8 @@ const styles = StyleSheet.create({
     borderRadius: THEME.roundness * 2,
     alignItems: 'center',
     marginBottom: THEME.spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   socialButtonText: {
     fontSize: 16,
@@ -270,6 +337,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  privacyLink: {
+    marginTop: THEME.spacing.lg,
+    alignItems: 'center',
+  },
+  privacyText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    textDecorationLine: 'underline',
   },
 });
 

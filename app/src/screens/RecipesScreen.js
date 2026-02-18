@@ -270,7 +270,7 @@ const RecipesScreen = ({ navigation }) => {
                   style={styles.upgradeButton}
                   onPress={() => {
                     setLimitModalVisible(false);
-                    navigation.navigate('ProfileScreen');
+                    navigation.navigate('Subscription');
                   }}
                 >
                   <Text style={styles.upgradeButtonText}>{t('go_premium')}</Text>
@@ -292,7 +292,7 @@ const RecipesScreen = ({ navigation }) => {
                   style={styles.upgradeButton}
                   onPress={() => {
                     setLimitModalVisible(false);
-                    navigation.navigate('ProfileScreen');
+                    navigation.navigate('Subscription');
                   }}
                 >
                   <Text style={styles.upgradeButtonText}>{t('go_premium')}</Text>

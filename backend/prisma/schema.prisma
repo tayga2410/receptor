@@ -39,6 +39,12 @@ model User {
   subscriptionType     SubscriptionType @default(FREE)
   subscriptionExpiresAt DateTime?
   isAdmin              Boolean          @default(false)
+
+  // OAuth провайдеры
+  googleId             String?          @unique
+  telegramId           String?          @unique
+  avatarUrl            String?          // URL аватара из соцсети
+
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
@@ -48,6 +54,22 @@ model User {
   expenses             Expense[]
   expenseItems         ExpenseItem[]
   salesRecords         SalesRecord[]
+  purchases            Purchase[]
+}
+
+// Модель для хранения покупок
+model Purchase {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  platform       String   // GOOGLE, APPLE
+  productId      String   // premium_monthly, premium_yearly
+  purchaseToken  String   @db.Text
+  transactionId  String
+  status         String   // PENDING, COMPLETED, CANCELLED, REFUNDED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 model Unit {

@@ -124,20 +124,29 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.menuItemText}>{t('about_app')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textLight} />
           </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Pressable style={styles.premiumButton} onPress={() => Alert.alert('Info', t('premium_in_development'))}>
-            <Text style={styles.premiumButtonText}>🌟 {t('go_premium')}</Text>
+          <Pressable style={styles.menuItem} onPress={() => navigation.navigate('PrivacyPolicy')}>
+            <Text style={styles.menuItemText}>{t('privacy_policy')}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textLight} />
           </Pressable>
         </View>
+
+        {/* Premium Button - для всех кроме PREMIUM/AMBASSADOR */}
+        {user?.subscriptionType !== 'PREMIUM' && user?.subscriptionType !== 'AMBASSADOR' && (
+          <View style={styles.section}>
+            <Pressable style={styles.premiumButton} onPress={() => navigation.navigate('Subscription')}>
+              <MaterialCommunityIcons name="crown" size={20} color={COLORS.white} />
+              <Text style={styles.premiumButtonText}>{t('go_premium')}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.white} />
+            </Pressable>
+          </View>
+        )}
 
         {/* Admin Panel Button - visible only for admins */}
         {user?.isAdmin && (
           <View style={styles.section}>
             <Pressable style={styles.adminButton} onPress={() => navigation.navigate('AdminDashboard')}>
               <MaterialCommunityIcons name="shield-account" size={20} color="#9C27B0" />
-              <Text style={styles.adminButtonText}>🛡️ Админ-панель</Text>
+              <Text style={styles.adminButtonText}>🛡️ {t('admin_panel')}</Text>
               <MaterialCommunityIcons name="chevron-right" size={20} color="#9C27B0" />
             </Pressable>
           </View>
@@ -147,6 +156,11 @@ const ProfileScreen = ({ navigation }) => {
           <Pressable style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutButtonText}>{t('logout')}</Text>
           </Pressable>
+        </View>
+
+        {/* Made in KZ */}
+        <View style={styles.madeInKZ}>
+          <Text style={styles.madeInKZText}>Made in KZ 🇰🇿</Text>
         </View>
       </ScrollView>
 
@@ -258,15 +272,18 @@ const styles = StyleSheet.create({
   },
   premiumButton: {
     backgroundColor: COLORS.accent,
-    paddingVertical: THEME.spacing.md,
-    paddingHorizontal: THEME.spacing.lg,
-    borderRadius: THEME.roundness * 2,
+    padding: THEME.spacing.md,
+    borderRadius: THEME.roundness,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   premiumButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+    flex: 1,
+    marginLeft: 10,
   },
   adminButton: {
     backgroundColor: '#9C27B015',
@@ -347,6 +364,17 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     padding: 10,
+  },
+  madeInKZ: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    marginBottom: 16,
+  },
+  madeInKZText: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    fontWeight: '500',
+    letterSpacing: 1,
   },
 });
 

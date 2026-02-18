@@ -25,7 +25,7 @@ const PremiumGate = ({ children, navigation }) => {
 
         <TouchableOpacity
           style={styles.upgradeButton}
-          onPress={() => navigation?.navigate('ProfileScreen')}
+          onPress={() => navigation?.navigate('Subscription')}
         >
           <MaterialCommunityIcons name="crown" size={20} color={COLORS.white} />
           <Text style={styles.upgradeButtonText}>{t('go_premium')}</Text>
