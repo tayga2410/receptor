@@ -6,25 +6,39 @@
     "orientation": "portrait",
     "icon": "./assets/main_icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/main_icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.receptor.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/main_icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.receptor"
+      "package": "com.receptor.app"
     },
+    "plugins": [
+      [
+        "react-native-iap",
+        {
+          "store": "play"
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "73627a55-249b-4ffa-a435-e34a38b836c7"
+      }
+    },
+    "owner": "tayga2410s-organization"
   }
 }

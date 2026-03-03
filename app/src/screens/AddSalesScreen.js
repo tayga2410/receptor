@@ -10,18 +10,21 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import { getCurrencySymbol } from '../utils/currency';
 import { formatUnit } from '../utils/units';
+import { parseDate } from '../utils/date';
 import useStore from '../store/useStore';
 
 const AddSalesScreen = ({ route, navigation }) => {
   const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
   const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
+  const insets = useSafeAreaInsets();
   const { date } = route.params || {};
 
   const [recipes, setRecipes] = useState([]);
@@ -127,16 +130,26 @@ const AddSalesScreen = ({ route, navigation }) => {
   };
 
   const updateQuantity = (recipeId, quantity) => {
+    // Убираем ведущие нули, но оставляем возможность ввести 0 или десятичную точку
+    let cleanValue = quantity;
+    if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+      cleanValue = cleanValue.replace(/^0+/, '') || '0';
+    }
     setSelectedRecipes(prev => ({
       ...prev,
-      [recipeId]: quantity,
+      [recipeId]: cleanValue,
     }));
   };
 
   const updateExpenseItemQuantity = (itemId, quantity) => {
+    // Убираем ведущие нули, но оставляем возможность ввести 0 или десятичную точку
+    let cleanValue = quantity;
+    if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+      cleanValue = cleanValue.replace(/^0+/, '') || '0';
+    }
     setSelectedExpenseItems(prev => ({
       ...prev,
-      [itemId]: quantity,
+      [itemId]: cleanValue,
     }));
   };
 
@@ -191,7 +204,7 @@ const AddSalesScreen = ({ route, navigation }) => {
     try {
       setSubmitting(true);
       const salesData = {
-        date: date ? new Date(date) : new Date(),
+        date: date ? parseDate(date) || new Date() : new Date(),
         items,
         expenseItems: expenseItemsData.length > 0 ? expenseItemsData : undefined,
         deliveryFee: parseFloat(deliveryFee) || 0,
@@ -446,7 +459,14 @@ const AddSalesScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.deliveryInput}
                 value={deliveryFee}
-                onChangeText={setDeliveryFee}
+                onChangeText={(text) => {
+                  // Убираем ведущие нули
+                  let cleanValue = text;
+                  if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+                    cleanValue = cleanValue.replace(/^0+/, '') || '0';
+                  }
+                  setDeliveryFee(cleanValue);
+                }}
                 keyboardType="decimal-pad"
                 textAlign="center"
               />
@@ -469,7 +489,7 @@ const AddSalesScreen = ({ route, navigation }) => {
       </ScrollView>
 
       {recipes.length > 0 && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + THEME.spacing.md }]}>
           <Text style={styles.selectedCount}>
             {selectedCount} {t('recipes_selected')}
           </Text>

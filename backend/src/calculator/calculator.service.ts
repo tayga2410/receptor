@@ -4,14 +4,14 @@ import { Unit, UnitType } from '@prisma/client';
 @Injectable()
 export class CalculatorService {
   calculateCostPrice(ingredients: any[]): number {
-    return ingredients.reduce((total, recipeIngredient) => {
-      const ingredient = recipeIngredient.ingredient;
+    return ingredients.reduce((total, ri) => {
+      const ingredient = ri.ingredient;
       const quantityInBase = this.convertToBaseUnit(
-        recipeIngredient.quantity,
-        recipeIngredient.unit,
+        ri.quantity,
+        ri.unit,
         ingredient.unit,
       );
-      const cost = (ingredient.pricePerUnit / this.getConversionFactor(ingredient.unit)) * quantityInBase;
+      const cost = ingredient.pricePerUnit * quantityInBase;
       return total + cost;
     }, 0);
   }

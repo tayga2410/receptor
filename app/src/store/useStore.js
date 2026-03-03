@@ -216,57 +216,6 @@ const useStore = create(
       },
 
       logout: () => set({ user: null, token: null, isAuthenticated: false }),
-
-      // OAuth аутентификация через Google
-      loginWithGoogle: async () => {
-        const { signInWithGoogle } = require('../services/OAuthService');
-        const state = useStore.getState();
-        const language = state.language || 'RU';
-
-        try {
-          const result = await signInWithGoogle();
-
-          if (result.success) {
-            set({ user: result.user, token: result.token, isAuthenticated: true });
-            return { success: true };
-          }
-
-          // Если пользователь отменил вход
-          if (result.error === 'cancelled') {
-            return { success: false, error: 'cancelled' };
-          }
-
-          const errorMessage = translateError('error_google_auth', language);
-          return { success: false, error: result.error || errorMessage };
-        } catch (error) {
-          console.error('Google login error:', error);
-          const errorMessage = getNetworkErrorMessage(error, language);
-          return { success: false, error: errorMessage };
-        }
-      },
-
-      // OAuth аутентификация через Telegram
-      loginWithTelegram: async (telegramData) => {
-        const { signInWithTelegram } = require('../services/OAuthService');
-        const state = useStore.getState();
-        const language = state.language || 'RU';
-
-        try {
-          const result = await signInWithTelegram(telegramData);
-
-          if (result.success) {
-            set({ user: result.user, token: result.token, isAuthenticated: true });
-            return { success: true };
-          }
-
-          const errorMessage = translateError('error_telegram_auth', language);
-          return { success: false, error: result.error || errorMessage };
-        } catch (error) {
-          console.error('Telegram login error:', error);
-          const errorMessage = getNetworkErrorMessage(error, language);
-          return { success: false, error: errorMessage };
-        }
-      },
     }),
     {
       name: 'app-storage',

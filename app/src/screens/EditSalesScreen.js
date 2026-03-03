@@ -75,7 +75,8 @@ const EditSalesScreen = ({ route, navigation }) => {
       const expenseUnits = {};
       orderData.expenseItems?.forEach(item => {
         expenseQuantities[item.expenseItemId] = item.quantity.toString();
-        expenseUnits[item.expenseItemId] = item.unitId;
+        // unitId находится во вложенном expenseItem
+        expenseUnits[item.expenseItemId] = item.expenseItem?.unitId;
       });
       setSelectedExpenseItems(expenseQuantities);
       setSelectedExpenseUnits(expenseUnits);
@@ -124,16 +125,26 @@ const EditSalesScreen = ({ route, navigation }) => {
   };
 
   const updateQuantity = (recipeId, quantity) => {
+    // Убираем ведущие нули, но оставляем возможность ввести 0 или десятичную точку
+    let cleanValue = quantity;
+    if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+      cleanValue = cleanValue.replace(/^0+/, '') || '0';
+    }
     setSelectedRecipes(prev => ({
       ...prev,
-      [recipeId]: quantity,
+      [recipeId]: cleanValue,
     }));
   };
 
   const updateExpenseItemQuantity = (itemId, quantity) => {
+    // Убираем ведущие нули, но оставляем возможность ввести 0 или десятичную точку
+    let cleanValue = quantity;
+    if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+      cleanValue = cleanValue.replace(/^0+/, '') || '0';
+    }
     setSelectedExpenseItems(prev => ({
       ...prev,
-      [itemId]: quantity,
+      [itemId]: cleanValue,
     }));
   };
 
@@ -428,7 +439,14 @@ const EditSalesScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.deliveryInput}
                 value={deliveryFee}
-                onChangeText={setDeliveryFee}
+                onChangeText={(text) => {
+                  // Убираем ведущие нули
+                  let cleanValue = text;
+                  if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+                    cleanValue = cleanValue.replace(/^0+/, '') || '0';
+                  }
+                  setDeliveryFee(cleanValue);
+                }}
                 keyboardType="decimal-pad"
                 textAlign="center"
               />

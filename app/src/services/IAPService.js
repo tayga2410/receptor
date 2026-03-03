@@ -94,7 +94,8 @@ class IAPService {
 
     // Демо-режим - показываем сообщение что покупки недоступны
     if (this.demoMode) {
-      throw new Error('Покупки недоступны в демо-режиме. Для тестирования используйте реальное устройство с Google Play.');
+      const storeName = Platform.OS === 'ios' ? 'App Store' : 'Google Play';
+      throw new Error(`Покупки недоступны в демо-режиме. Для тестирования используйте реальное устройство с ${storeName}.`);
     }
 
     try {

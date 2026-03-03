@@ -22,9 +22,9 @@ export const COLORS = {
 export const THEME = {
   colors: COLORS,
   fonts: {
-    regular: 'System',
-    medium: 'System',
-    bold: 'System',
+    regular: undefined,
+    medium: undefined,
+    bold: undefined,
   },
   roundness: 8,
   spacing: {

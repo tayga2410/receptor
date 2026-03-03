@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -11,6 +12,7 @@ import { CURRENCIES } from '../utils/currency';
 const IngredientsScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
+  const insets = useSafeAreaInsets();
   const [ingredients, setIngredients] = useState([]);
   const [filteredIngredients, setFilteredIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -177,7 +179,10 @@ const IngredientsScreen = ({ navigation }) => {
         onRefresh={handleRefresh}
       />
       {filteredIngredients.length > 0 && (
-        <TouchableOpacity style={styles.fab} onPress={handleAddIngredient}>
+        <TouchableOpacity
+          style={[styles.fab, { bottom: THEME.spacing.xl + insets.bottom }]}
+          onPress={handleAddIngredient}
+        >
           <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
         </TouchableOpacity>
       )}

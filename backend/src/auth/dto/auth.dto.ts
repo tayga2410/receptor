@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsOptional, IsEmail } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -15,37 +15,4 @@ export class LoginDto {
 
   @IsString()
   password: string;
-}
-
-export class GoogleAuthDto {
-  @IsString()
-  idToken: string;
-}
-
-export class TelegramAuthDto {
-  @IsString()
-  id: string;
-
-  @IsString()
-  hash: string;
-
-  @IsOptional()
-  @IsString()
-  first_name?: string;
-
-  @IsOptional()
-  @IsString()
-  last_name?: string;
-
-  @IsOptional()
-  @IsString()
-  username?: string;
-
-  @IsOptional()
-  @IsString()
-  photo_url?: string;
-
-  @IsOptional()
-  @IsString()
-  auth_date?: string;
 }

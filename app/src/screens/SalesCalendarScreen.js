@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
+import { parseDate } from '../utils/date';
 import ProfitBarChart from '../components/ProfitBarChart';
 import PremiumGate from '../components/PremiumGate';
 import useStore from '../store/useStore';
@@ -139,7 +140,10 @@ const SalesCalendarScreen = ({ navigation }) => {
             key={currentLocale}
             current={currentMonth.toISOString().split('T')[0]}
             onDayPress={handleDayPress}
-            onMonthChange={(month) => setCurrentMonth(new Date(month.dateString))}
+            onMonthChange={(month) => {
+              const parsed = parseDate(month.dateString);
+              if (parsed) setCurrentMonth(parsed);
+            }}
             markedDates={markedDates}
             firstDay={1}
             theme={{
@@ -153,9 +157,6 @@ const SalesCalendarScreen = ({ navigation }) => {
               textDisabledColor: COLORS.textLight,
               arrowColor: COLORS.accent,
               monthTextColor: COLORS.text,
-              textDayFontFamily: 'System',
-              textMonthFontFamily: 'System',
-              textDayHeaderFontFamily: 'System',
               textDayFontSize: 16,
               textMonthFontSize: 18,
               textDayHeaderFontSize: 14,

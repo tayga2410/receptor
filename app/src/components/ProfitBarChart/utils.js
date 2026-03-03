@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { parseDate } from '../../utils/date';
 
 // Маппинг английских дней недели на ключи переводов
 const DAY_WEEK_MAP = {
@@ -43,7 +44,9 @@ export const CHART_COLORS = {
  * @returns {Array} Массив объектов { date, dayOfMonth, dayOfWeek, value, hasData, isProfit }
  */
 export const buildChartData = (markedDates, centerDate, t) => {
-  const center = new Date(centerDate);
+  const center = parseDate(centerDate);
+  if (!center) return [];
+
   const days = [];
 
   for (let i = -CHART_CONFIG.DAYS_RANGE; i <= CHART_CONFIG.DAYS_RANGE; i++) {

@@ -229,18 +229,11 @@ const RecipeFormScreen = ({ route, navigation }) => {
 
   const updateIngredientUnit = (index, unitId) => {
     const newIngredients = [...formData.ingredients];
-    const currentIngredient = newIngredients[index];
     const newUnit = allUnits.find(u => u.id === unitId);
-    const oldUnit = currentIngredient.unit;
 
-    if (newUnit && oldUnit) {
-      // Конвертируем количество из старой единицы в новую
-      const currentQuantity = parseFloat(currentIngredient.quantity) || 0;
-      const convertedQuantity = convertUnits(currentQuantity, oldUnit, newUnit);
-
+    if (newUnit) {
       newIngredients[index].unitId = unitId;
       newIngredients[index].unit = newUnit;
-      newIngredients[index].quantity = convertedQuantity.toString();
       setFormData({ ...formData, ingredients: newIngredients });
     }
   };

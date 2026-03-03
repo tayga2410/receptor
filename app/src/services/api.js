@@ -199,14 +199,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    google: (idToken) => apiFetch('/auth/google', {
-      method: 'POST',
-      body: JSON.stringify({ idToken }),
-    }),
-    telegram: (telegramData) => apiFetch('/auth/telegram', {
-      method: 'POST',
-      body: JSON.stringify(telegramData),
-    }),
   },
   users: {
     getProfile: () => apiFetch('/users/me'),

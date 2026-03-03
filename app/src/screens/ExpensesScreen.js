@@ -11,6 +11,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -24,6 +25,7 @@ const ExpensesScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
   const user = useStore((state) => state.user);
   const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
+  const insets = useSafeAreaInsets();
 
   // Tab state
   const [activeTab, setActiveTab] = useState('monthly');
@@ -313,16 +315,18 @@ const ExpensesScreen = ({ navigation }) => {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="cash-minus" size={64} color={COLORS.textLight} />
-                <Text style={styles.emptyStateText}>{t('no_expenses')}</Text>
-                <Text style={styles.emptyStateHint}>{t('expenses_hint')}</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.addFirstButton}
+                onPress={() => setExpenseModalVisible(true)}
+              >
+                <MaterialCommunityIcons name="plus-circle-outline" size={32} color={COLORS.accent} />
+                <Text style={styles.addFirstButtonText}>{t('add_first_expense')}</Text>
+              </TouchableOpacity>
             }
           />
 
           <TouchableOpacity
-            style={styles.fab}
+            style={[styles.fab, { bottom: THEME.spacing.xl + insets.bottom }]}
             onPress={() => setExpenseModalVisible(true)}
           >
             <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
@@ -346,15 +350,18 @@ const ExpensesScreen = ({ navigation }) => {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="package-variant" size={64} color={COLORS.textLight} />
-                <Text style={styles.emptyStateText}>{t('no_expense_items')}</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.addFirstButton}
+                onPress={() => setItemModalVisible(true)}
+              >
+                <MaterialCommunityIcons name="plus-circle-outline" size={32} color={COLORS.accent} />
+                <Text style={styles.addFirstButtonText}>{t('add_first_expense_item')}</Text>
+              </TouchableOpacity>
             }
           />
 
           <TouchableOpacity
-            style={styles.fab}
+            style={[styles.fab, { bottom: THEME.spacing.xl + insets.bottom }]}
             onPress={() => setItemModalVisible(true)}
           >
             <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
@@ -670,6 +677,24 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginTop: THEME.spacing.xs,
     textAlign: 'center',
+  },
+  addFirstButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: THEME.spacing.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: THEME.roundness,
+    padding: THEME.spacing.lg,
+    margin: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+    borderStyle: 'dashed',
+  },
+  addFirstButtonText: {
+    fontSize: 16,
+    color: COLORS.accent,
+    fontWeight: '500',
   },
   fab: {
     position: 'absolute',

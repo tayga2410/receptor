@@ -1,28 +1,21 @@
 import { Controller, Post, Body } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, GoogleAuthDto, TelegramAuthDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 попыток в минуту
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 попыток в минуту
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
-  }
-
-  @Post('google')
-  loginWithGoogle(@Body() googleAuthDto: GoogleAuthDto) {
-    return this.authService.loginWithGoogle(googleAuthDto);
-  }
-
-  @Post('telegram')
-  loginWithTelegram(@Body() telegramAuthDto: TelegramAuthDto) {
-    return this.authService.loginWithTelegram(telegramAuthDto);
   }
 }

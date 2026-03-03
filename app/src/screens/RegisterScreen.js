@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput, Pressable, Text, ActivityIndicator, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import Logo from '../components/Logo';
 import ErrorMessage from '../components/ErrorMessage';
 import useStore from '../store/useStore';
-import { configureGoogleSignIn, openTelegramBot, isGoogleSignInSupported } from '../services/OAuthService';
 
 const RegisterScreen = ({ navigation }) => {
   const { t, language, changeLanguage } = useTranslation();
   const register = useStore((state) => state.register);
-  const loginWithGoogle = useStore((state) => state.loginWithGoogle);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [honeypot, setHoneypot] = useState(''); // Honeypot field
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [googleAvailable, setGoogleAvailable] = useState(false);
 
   const languages = [
     { code: 'KZ', label: 'KZ' },
@@ -28,19 +25,14 @@ const RegisterScreen = ({ navigation }) => {
     { code: 'EN', label: 'EN' },
   ];
 
-  // Конфигурируем Google Sign-In при загрузке экрана
-  useEffect(() => {
-    const init = async () => {
-      configureGoogleSignIn();
-      setTimeout(() => {
-        setGoogleAvailable(isGoogleSignInSupported());
-      }, 100);
-    };
-    init();
-  }, []);
-
   const handleRegister = async () => {
     setError(null);
+
+    // Honeypot check - если заполнено, это бот
+    if (honeypot) {
+      console.log('Bot detected');
+      return;
+    }
 
     if (!username || !password || !confirmPassword) {
       setError(t('error_fill_all_fields'));
@@ -59,28 +51,6 @@ const RegisterScreen = ({ navigation }) => {
     if (!result.success) {
       setError(result.error);
     }
-  };
-
-  const handleGoogleRegister = async () => {
-    setError(null);
-    setGoogleLoading(true);
-
-    try {
-      const result = await loginWithGoogle();
-
-      if (!result.success && result.error !== 'cancelled') {
-        setError(result.error || t('error_google_auth'));
-      }
-    } catch (err) {
-      setError(t('error_google_auth'));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleTelegramRegister = async () => {
-    // Telegram Login Widget требует настройки бота
-    setError('Telegram авторизация требует настройки бота. Обратитесь к администратору.');
   };
 
   return (
@@ -107,6 +77,19 @@ const RegisterScreen = ({ navigation }) => {
             autoCapitalize="none"
           />
         </View>
+
+        {/* Honeypot - скрытое поле для ботов */}
+        <TextInput
+          style={styles.honeypot}
+          value={honeypot}
+          onChangeText={setHoneypot}
+          autoCapitalize="none"
+          autoComplete="off"
+          textContentType="none"
+          importantForAutofill="no"
+          importantForAccessibility="no"
+          accessibilityElementsHidden={true}
+        />
 
         <View style={styles.inputContainer}>
           <View style={styles.inputWithIcon}>
@@ -145,36 +128,6 @@ const RegisterScreen = ({ navigation }) => {
         >
           <Text style={styles.primaryButtonText}>{loading ? t('loading') : t('register')}</Text>
         </Pressable>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>{t('or')}</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Показываем OAuth кнопки только если доступен нативный модуль или не на вебе */}
-        {(googleAvailable || Platform.OS !== 'web') && (
-          <Pressable
-            style={[styles.socialButton, googleLoading && styles.disabledButton]}
-            onPress={handleGoogleRegister}
-            disabled={googleLoading}
-          >
-            {googleLoading ? (
-              <ActivityIndicator size="small" color={COLORS.text} />
-            ) : (
-              <Text style={styles.socialButtonText}>G {t('google_sign_in')}</Text>
-            )}
-          </Pressable>
-        )}
-
-        {Platform.OS !== 'web' && (
-          <Pressable
-            style={styles.socialButton}
-            onPress={handleTelegramRegister}
-          >
-            <Text style={styles.socialButtonText}>T {t('telegram_sign_in')}</Text>
-          </Pressable>
-        )}
 
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>{t('no_account')} </Text>
@@ -254,6 +207,13 @@ const styles = StyleSheet.create({
     padding: THEME.spacing.md,
     fontSize: 16,
   },
+  honeypot: {
+    position: 'absolute',
+    left: -9999,
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
   iconButton: {
     paddingHorizontal: THEME.spacing.md,
   },
@@ -278,38 +238,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: THEME.spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.border,
-  },
-  dividerText: {
-    marginHorizontal: THEME.spacing.md,
-    color: COLORS.textLight,
-    fontSize: 14,
-  },
-  socialButton: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: THEME.spacing.md,
-    paddingHorizontal: THEME.spacing.lg,
-    borderRadius: THEME.roundness * 2,
-    alignItems: 'center',
-    marginBottom: THEME.spacing.sm,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
   },
   loginContainer: {
     flexDirection: 'row',

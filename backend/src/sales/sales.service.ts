@@ -63,7 +63,10 @@ export class SalesService {
   async findOne(id: string, userId: string) {
     const record = await this.prisma.salesRecord.findFirst({
       where: { id, userId },
-      include: { items: true },
+      include: {
+        items: true,
+        expenseItems: { include: { expenseItem: { include: { unit: true } } } },
+      },
     });
 
     if (!record) {
@@ -77,7 +80,7 @@ export class SalesService {
     const recipeIds = createSalesRecordDto.items.map(item => item.recipeId);
     const recipes = await this.prisma.recipe.findMany({
       where: { id: { in: recipeIds } },
-      include: { ingredients: { include: { ingredient: true, unit: true } } },
+      include: { ingredients: { include: { ingredient: { include: { unit: true } }, unit: true } } },
     });
 
     const recipeMap = new Map(recipes.map(r => [r.id, r]));
@@ -94,13 +97,15 @@ export class SalesService {
 
     const items = createSalesRecordDto.items.map(item => {
       const recipe = recipeMap.get(item.recipeId);
-      const costPrice = this.calculator.calculateCostPrice(recipe.ingredients);
+      const totalCostPrice = this.calculator.calculateCostPrice(recipe.ingredients);
+      const portions = recipe.portions || 1;
+      const costPricePerPortion = totalCostPrice / portions;
 
       return {
         recipeId: item.recipeId,
         quantity: item.quantity,
         snapshotSalePrice: recipe.salePrice,
-        snapshotCostPrice: costPrice,
+        snapshotCostPrice: costPricePerPortion,
         currency: recipe.currency,
         recipeName: recipe.name,
       };
@@ -187,20 +192,22 @@ export class SalesService {
       const recipeIds = updateSalesRecordDto.items.map(item => item.recipeId);
       const recipes = await this.prisma.recipe.findMany({
         where: { id: { in: recipeIds } },
-        include: { ingredients: { include: { ingredient: true, unit: true } } },
+        include: { ingredients: { include: { ingredient: { include: { unit: true } }, unit: true } } },
       });
 
       const recipeMap = new Map(recipes.map(r => [r.id, r]));
 
       const items = updateSalesRecordDto.items.map(item => {
         const recipe = recipeMap.get(item.recipeId);
-        const costPrice = this.calculator.calculateCostPrice(recipe.ingredients);
+        const totalCostPrice = this.calculator.calculateCostPrice(recipe.ingredients);
+        const portions = recipe.portions || 1;
+        const costPricePerPortion = totalCostPrice / portions;
 
         return {
           recipeId: item.recipeId,
           quantity: item.quantity,
           snapshotSalePrice: recipe.salePrice,
-          snapshotCostPrice: costPrice,
+          snapshotCostPrice: costPricePerPortion,
           currency: recipe.currency,
           recipeName: recipe.name,
         };

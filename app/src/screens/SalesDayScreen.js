@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { ru, kk, enUS } from 'date-fns/locale';
@@ -16,6 +17,7 @@ import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
 import { api } from '../services/api';
 import { getCurrencySymbol } from '../utils/currency';
+import { parseDate, getDaysInMonth } from '../utils/date';
 import useStore from '../store/useStore';
 
 const getDateLocale = (language) => {
@@ -59,6 +61,7 @@ const SalesDayScreen = ({ route, navigation }) => {
   const { date } = route.params;
   const user = useStore((state) => state.user);
   const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
+  const insets = useSafeAreaInsets();
   const [salesData, setSalesData] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -95,24 +98,19 @@ const SalesDayScreen = ({ route, navigation }) => {
     }
   };
 
-  const getDaysInMonth = (dateString) => {
-    const d = new Date(dateString);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    return new Date(year, month, 0).getDate();
-  };
-
   const dailyExpenses = expenses.length > 0
     ? expenses.reduce((sum, exp) => sum + exp.amount, 0) / getDaysInMonth(date)
     : 0;
 
   const formatDate = (dateString) => {
-    const dateObj = new Date(dateString);
+    const dateObj = parseDate(dateString);
+    if (!dateObj) return '';
     return format(dateObj, 'd MMMM yyyy', { locale: getDateLocale(language) });
   };
 
   const formatTime = (dateString) => {
-    const dateObj = new Date(dateString);
+    const dateObj = parseDate(dateString);
+    if (!dateObj) return '';
     return format(dateObj, 'HH:mm', { locale: getDateLocale(language) });
   };
 
@@ -333,7 +331,7 @@ const SalesDayScreen = ({ route, navigation }) => {
       )}
 
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: THEME.spacing.xl + insets.bottom }]}
         onPress={() => navigation.navigate('AddSales', { date })}
       >
         <MaterialCommunityIcons name="plus" size={24} color={COLORS.white} />
