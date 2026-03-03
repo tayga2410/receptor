@@ -1,5 +1,3 @@
-# Documentation files
-*.md
 
 # Dependencies
 node_modules/
