@@ -86,7 +86,7 @@ const EditSalesScreen = ({ route, navigation }) => {
 
     } catch (error) {
       console.error('Failed to load data:', error);
-      Alert.alert(t('error'), t('error_load_sales'));
+      dialog.alert(t('error'), t('error_load_sales'));
     } finally {
       setLoading(false);
     }
@@ -178,7 +178,7 @@ const EditSalesScreen = ({ route, navigation }) => {
     }
 
     if (items.length === 0) {
-      Alert.alert(t('error'), t('select_recipes'));
+      dialog.alert(t('error'), t('select_recipes'));
       return;
     }
 
@@ -206,48 +206,40 @@ const EditSalesScreen = ({ route, navigation }) => {
       const response = await api.sales.update(orderId, updateData);
 
       if (response.ok) {
-        Alert.alert(
-          t('success'),
-          t('sale_updated'),
-          [
-            {
-              text: t('ok'),
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+        dialog.alert(t('success'), t('sale_updated')).then(() => {
+          navigation.goBack();
+        });
       } else {
         const error = await response.json();
-        Alert.alert(t('error'), error.message || t('error_update_sale'));
+        dialog.alert(t('error'), error.message || t('error_update_sale'));
       }
     } catch (error) {
       console.error('Failed to update sale:', error);
-      Alert.alert(t('error'), t('error_update_sale'));
+      dialog.alert(t('error'), t('error_update_sale'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
+  const handleDelete = async () => {
+    const confirmed = await dialog.confirm(
       t('delete_order'),
       t('confirm_delete_order'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.sales.delete(orderId);
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert(t('error'), t('error_delete_sale'));
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+
+    if (confirmed) {
+      try {
+        await api.sales.delete(orderId);
+        navigation.goBack();
+      } catch (error) {
+        dialog.alert(t('error'), t('error_delete_sale'));
+      }
+    }
   };
 
   const renderRecipe = (item) => {

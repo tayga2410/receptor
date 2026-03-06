@@ -5,7 +5,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   Modal,
@@ -15,14 +14,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
-import useStore from '../store/useStore';
+import useStore from '../store/useStore'
 import { getCurrencySymbol, CURRENCIES } from '../utils/currency';
 import { formatUnit } from '../utils/units';
 import PremiumGate from '../components/PremiumGate';
 
 const ExpensesScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
   const currencySymbol = getCurrencySymbol(user?.currency || 'KZT');
   const insets = useSafeAreaInsets();
@@ -63,7 +64,7 @@ const ExpensesScreen = ({ navigation }) => {
       setExpenses(data);
     } catch (error) {
       console.error('Failed to load expenses:', error);
-      Alert.alert(t('error'), t('error_load_expenses'));
+      dialog.alert(t('error'), t('error_load_expenses'));
     } finally {
       setLoadingExpenses(false);
     }
@@ -77,7 +78,7 @@ const ExpensesScreen = ({ navigation }) => {
       setExpenseItems(data);
     } catch (error) {
       console.error('Failed to load expense items:', error);
-      Alert.alert(t('error'), t('error_load_expense_items'));
+      dialog.alert(t('error'), t('error_load_expense_items'));
     } finally {
       setLoadingItems(false);
     }
@@ -96,7 +97,7 @@ const ExpensesScreen = ({ navigation }) => {
   // Monthly expense handlers
   const handleSaveExpense = async () => {
     if (!expenseName.trim() || !expenseAmount.trim()) {
-      Alert.alert(t('error'), t('error_fill_all_fields'));
+      dialog.alert(t('error'), t('error_fill_all_fields'));
       return;
     }
 
@@ -118,7 +119,7 @@ const ExpensesScreen = ({ navigation }) => {
       setEditingExpense(null);
       loadExpenses();
     } catch (error) {
-      Alert.alert(t('error'), t('error_save_expense'));
+      dialog.alert(t('error'), t('error_save_expense'));
     }
   };
 
@@ -129,32 +130,30 @@ const ExpensesScreen = ({ navigation }) => {
     setExpenseModalVisible(true);
   };
 
-  const handleDeleteExpense = (expense) => {
-    Alert.alert(
+  const handleDeleteExpense = async (expense) => {
+    const confirmed = await dialog.confirm(
       t('delete'),
       t('confirm_delete_expense'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.expenses.delete(expense.id);
-              loadExpenses();
-            } catch (error) {
-              Alert.alert(t('error'), t('error_delete_expense_failed'));
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+    if (confirmed) {
+      try {
+        await api.expenses.delete(expense.id);
+        loadExpenses();
+      } catch (error) {
+        dialog.alert(t('error'), t('error_delete_expense_failed'));
+      }
+    }
   };
 
   // Expense item handlers
   const handleSaveItem = async () => {
     if (!itemName.trim() || !itemPrice.trim() || !selectedUnitId) {
-      Alert.alert(t('error'), t('error_fill_all_fields'));
+      dialog.alert(t('error'), t('error_fill_all_fields'));
       return;
     }
 
@@ -185,7 +184,7 @@ const ExpensesScreen = ({ navigation }) => {
       setEditingItem(null);
       loadExpenseItems();
     } catch (error) {
-      Alert.alert(t('error'), t('error_save_expense_item'));
+      dialog.alert(t('error'), t('error_save_expense_item'));
     }
   };
 
@@ -198,26 +197,25 @@ const ExpensesScreen = ({ navigation }) => {
     setItemModalVisible(true);
   };
 
-  const handleDeleteItem = (item) => {
-    Alert.alert(
+  const handleDeleteItem = async (item) => {
+    const confirmed = await dialog.confirm(
       t('delete'),
       t('confirm_delete_expense_item'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.expenseItems.delete(item.id);
-              loadExpenseItems();
-            } catch (error) {
-              Alert.alert(t('error'), t('error_delete_expense_failed'));
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+
+    if (confirmed) {
+      try {
+        await api.expenseItems.delete(item.id);
+        loadExpenseItems();
+      } catch (error) {
+        dialog.alert(t('error'), t('error_delete_expense_failed'));
+      }
+    }
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);

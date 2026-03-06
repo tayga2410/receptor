@@ -13,6 +13,9 @@ async function bootstrap() {
         'http://localhost:19006',
         'http://localhost:8081',
         'exp://localhost:19000',
+        'http://192.168.0.163:8081',
+        'exp://192.168.0.163:8081',
+        'http://192.168.0.163:3000',
       ];
 
   app.enableCors({

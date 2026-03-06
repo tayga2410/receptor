@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Modal,
   FlatList,
@@ -17,6 +16,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import useStore from '../store/useStore';
 import { getCurrencySymbol } from '../utils/currency';
@@ -24,6 +24,7 @@ import { formatUnit } from '../utils/units';
 
 const RecipeFormScreen = ({ route, navigation }) => {
   const { t, language } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
   const recipe = route.params?.recipe;
   const [loading, setLoading] = useState(false);
@@ -58,18 +59,19 @@ const RecipeFormScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (route.params?.showDeleteDialog && recipe) {
-      Alert.alert(
+      dialog.confirm(
         t('delete'),
         t('confirm_delete_recipe'),
-        [
-          { text: t('cancel'), style: 'cancel' },
-          {
-            text: t('delete'),
-            style: 'destructive',
-            onPress: handleDelete,
-          },
-        ]
-      );
+        {
+          confirmText: t('delete'),
+          cancelText: t('cancel'),
+          destructive: true,
+        }
+      ).then((confirmed) => {
+        if (confirmed) {
+          handleDelete();
+        }
+      });
       navigation.setParams({ showDeleteDialog: undefined });
     }
   }, [route.params?.showDeleteDialog]);
@@ -107,7 +109,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Failed to load ingredients:', error);
-      Alert.alert(t('error'), t('error_load_ingredients'));
+      dialog.alert(t('error'), t('error_load_ingredients'));
     } finally {
       setIngredientsLoading(false);
     }
@@ -145,11 +147,11 @@ const RecipeFormScreen = ({ route, navigation }) => {
         navigation.goBack();
       } else {
         const error = await response.json();
-        Alert.alert(t('error'), error.message || t('error_delete_recipe'));
+        dialog.alert(t('error'), error.message || t('error_delete_recipe'));
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
-      Alert.alert(t('error'), error.message || t('error_network'));
+      dialog.alert(t('error'), error.message || t('error_network'));
     } finally {
       setLoading(false);
     }
@@ -157,7 +159,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
 
   const addIngredient = () => {
     if (availableIngredients.length === 0) {
-      Alert.alert(t('error'), t('no_ingredients'));
+      dialog.alert(t('error'), t('no_ingredients'));
       return;
     }
     setSelectedIngredientIndex(null); // null означает добавление нового
@@ -174,7 +176,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
   const confirmIngredientSelection = (ingredientId = null) => {
     const id = ingredientId || tempSelectedIngredientId;
     if (!id) {
-      Alert.alert(t('error'), t('error_select_ingredient'));
+      dialog.alert(t('error'), t('error_select_ingredient'));
       return;
     }
 
@@ -270,7 +272,7 @@ const RecipeFormScreen = ({ route, navigation }) => {
 
   const handleSave = async () => {
     if (!formData.name || formData.ingredients.length === 0) {
-      Alert.alert(t('error'), t('error_fill_required_fields'));
+      dialog.alert(t('error'), t('error_fill_required_fields'));
       return;
     }
 
@@ -308,11 +310,11 @@ const RecipeFormScreen = ({ route, navigation }) => {
       if (response.ok) {
         navigation.goBack();
       } else {
-        Alert.alert(t('error'), responseData.message || t('error_save_recipe'));
+        dialog.alert(t('error'), responseData.message || t('error_save_recipe'));
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      Alert.alert(t('error'), error.message || t('error_network'));
+      dialog.alert(t('error'), error.message || t('error_network'));
     } finally {
       setLoading(false);
     }

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, StyleSheet, Text, FlatList, Pressable, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import { formatPricePerUnit } from '../utils/currency';
 import useStore from '../store/useStore';
@@ -11,6 +12,7 @@ import { CURRENCIES } from '../utils/currency';
 
 const IngredientsScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
   const insets = useSafeAreaInsets();
   const [ingredients, setIngredients] = useState([]);
@@ -80,7 +82,7 @@ const IngredientsScreen = ({ navigation }) => {
       setFilteredIngredients(sortedData);
     } catch (error) {
       console.error('Failed to load ingredients:', error);
-      Alert.alert('Error', error.message || 'Failed to load ingredients');
+      dialog.alert(t('error'), error.message || 'Failed to load ingredients');
     } finally {
       setLoading(false);
       setRefreshing(false);

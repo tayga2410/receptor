@@ -8,13 +8,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import useStore from '../store/useStore';
 import { CURRENCIES } from '../utils/currency';
@@ -22,6 +22,7 @@ import { formatUnit } from '../utils/units';
 
 const IngredientFormScreen = ({ route, navigation }) => {
   const { t, language } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
   const ingredient = route.params?.ingredient;
   const [loading, setLoading] = useState(false);
@@ -42,18 +43,19 @@ const IngredientFormScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (route.params?.showDeleteDialog && ingredient) {
-      Alert.alert(
+      dialog.confirm(
         t('delete'),
         t('confirm_delete_ingredient'),
-        [
-          { text: t('cancel'), style: 'cancel' },
-          {
-            text: t('delete'),
-            style: 'destructive',
-            onPress: handleDelete,
-          },
-        ]
-      );
+        {
+          confirmText: t('delete'),
+          cancelText: t('cancel'),
+          destructive: true,
+        }
+      ).then((confirmed) => {
+        if (confirmed) {
+          handleDelete();
+        }
+      });
       navigation.setParams({ showDeleteDialog: undefined });
     }
   }, [route.params?.showDeleteDialog]);
@@ -66,11 +68,11 @@ const IngredientFormScreen = ({ route, navigation }) => {
         navigation.goBack();
       } else {
         const error = await response.json();
-        Alert.alert(t('error'), error.message || t('error_delete_ingredient'));
+        dialog.alert(t('error'), error.message || t('error_delete_ingredient'));
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
-      Alert.alert(t('error'), error.message || t('error_network'));
+      dialog.alert(t('error'), error.message || t('error_network'));
     } finally {
       setLoading(false);
     }
@@ -90,7 +92,7 @@ const IngredientFormScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Failed to load units:', error);
-      Alert.alert(t('error'), t('error_load_units'));
+      dialog.alert(t('error'), t('error_load_units'));
     } finally {
       setUnitsLoading(false);
     }
@@ -98,7 +100,7 @@ const IngredientFormScreen = ({ route, navigation }) => {
 
   const handleSave = async () => {
     if (!formData.name || !formData.price || !formData.unitId) {
-      Alert.alert(t('error'), t('error_fill_all_fields'));
+      dialog.alert(t('error'), t('error_fill_all_fields'));
       return;
     }
 
@@ -128,11 +130,11 @@ const IngredientFormScreen = ({ route, navigation }) => {
         navigation.goBack();
       } else {
         const error = await response.json();
-        Alert.alert(t('error'), error.message || t('error_save_ingredient'));
+        dialog.alert(t('error'), error.message || t('error_save_ingredient'));
       }
     } catch (error) {
       console.error('Failed to save ingredient:', error);
-      Alert.alert(t('error'), error.message || t('error_network'));
+      dialog.alert(t('error'), error.message || t('error_network'));
     } finally {
       setLoading(false);
     }

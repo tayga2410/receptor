@@ -1,23 +1,23 @@
 import React, { useEffect } from 'react';
-import { Alert } from 'react-native';
+import { useDialog } from '../contexts/DialogContext';
 import useStore from '../store/useStore';
 import { TRANSLATIONS } from '../constants/translations';
 
 const ErrorMessage = ({ message, visible, onClose }) => {
+  const dialog = useDialog();
+
   useEffect(() => {
     if (visible && message) {
       const language = useStore.getState().language || 'RU';
       const translations = TRANSLATIONS[language] || TRANSLATIONS.RU;
 
-      Alert.alert(translations.error, message, [
-        { text: translations.ok, onPress: () => {
-          onClose();
-        }}
-      ]);
+      dialog.alert(translations.error, message, translations.ok).then(() => {
+        onClose();
+      });
     }
-  }, [visible, message, onClose]);
+  }, [visible, message, onClose, dialog]);
 
-  // Компонент ничего не рендерит, Alert рендерится нативно
+  // Компонент ничего не рендерит, диалог рендерится через DialogProvider
   return null;
 };
 

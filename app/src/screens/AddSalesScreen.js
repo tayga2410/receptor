@@ -5,7 +5,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   ScrollView,
@@ -14,10 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import { getCurrencySymbol } from '../utils/currency';
 import { formatUnit } from '../utils/units';
-import { parseDate } from '../utils/date';
+            { parseDate } from '../utils/date';
 import useStore from '../store/useStore';
 
 const AddSalesScreen = ({ route, navigation }) => {
@@ -62,7 +62,7 @@ const AddSalesScreen = ({ route, navigation }) => {
       setSelectedRecipes(initialQuantities);
     } catch (error) {
       console.error('Failed to load recipes:', error);
-      Alert.alert(t('error'), t('error_load_recipes'));
+      dialog.alert(t('error'), t('error_load_recipes'));
     } finally {
       setLoading(false);
     }
@@ -184,9 +184,53 @@ const AddSalesScreen = ({ route, navigation }) => {
     }
 
     if (items.length === 0) {
-      Alert.alert(t('error'), t('select_recipes'));
+      dialog.alert(t('error'), t('select_recipes'));
       return;
     }
+
+    // Build expense items array
+    const expenseItemsData = [];
+    for (const [itemId, quantity] of Object.entries(selectedExpenseItems)) {
+      const qty = parseFloat(quantity);
+      if (qty > 0) {
+        expenseItemsData.push({
+          expenseItemId: itemId,
+          quantity: qty,
+          unitId: selectedExpenseUnits[itemId], // Отправляем выбранную единицу
+        });
+      }
+    }
+
+    try {
+      setSubmitting(true);
+      const salesData = {
+        date: date ? parseDate(date) : new Date(),
+        items,
+        expenseItems: expenseItemsData.length > 0 ? expenseItemsData : undefined,
+        deliveryFee: parseFloat(deliveryFee) || 0,
+      };
+
+      const response = await api.sales.create(salesData);
+
+      if (response.ok) {
+        dialog.alert(
+          t('success'),
+          t('sale_created'),
+          [
+            {
+              text: t('ok'),
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      } else {
+        const error = await response.json();
+        dialog.alert(t('error'), error.message || t('error_create_sale'));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
     // Build expense items array
     const expenseItemsData = [];
@@ -213,23 +257,16 @@ const AddSalesScreen = ({ route, navigation }) => {
       const response = await api.sales.create(salesData);
 
       if (response.ok) {
-        Alert.alert(
-          t('success'),
-          t('sale_created'),
-          [
-            {
-              text: t('ok'),
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+        dialog.alert(t('success'), t('sale_created')).then(() => {
+          navigation.goBack();
+        });
       } else {
         const error = await response.json();
-        Alert.alert(t('error'), error.message || t('error_create_sale'));
+        dialog.alert(t('error'), error.message || t('error_create_sale'));
       }
     } catch (error) {
       console.error('Failed to create sale:', error);
-      Alert.alert(t('error'), t('error_create_sale'));
+      dialog.alert(t('error'), t('error_create_sale'));
     } finally {
       setSubmitting(false);
     }

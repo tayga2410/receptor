@@ -6,7 +6,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +14,7 @@ import { format } from 'date-fns';
 import { ru, kk, enUS } from 'date-fns/locale';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import { getCurrencySymbol } from '../utils/currency';
 import { parseDate, getDaysInMonth } from '../utils/date';
@@ -82,7 +82,7 @@ const SalesDayScreen = ({ route, navigation }) => {
       setSalesData(data);
     } catch (error) {
       console.error('Failed to load sales:', error);
-      Alert.alert(t('error'), t('error_load_sales'));
+      dialog.alert(t('error'), t('error_load_sales'));
     } finally {
       setLoading(false);
     }
@@ -122,25 +122,24 @@ const SalesDayScreen = ({ route, navigation }) => {
   };
 
   const handleDeleteOrder = async (orderId) => {
-    Alert.alert(
+    const confirmed = await dialog.confirm(
       t('delete_order'),
       t('confirm_delete_order'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.sales.delete(orderId);
-              loadSalesForDay();
-            } catch (error) {
-              Alert.alert(t('error'), t('error_delete_sale'));
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+
+    if (confirmed) {
+      try {
+        await api.sales.delete(orderId);
+        loadSalesForDay();
+      } catch (error) {
+        dialog.alert(t('error'), t('error_delete_sale'));
+      }
+    }
   };
 
   const handleEditOrder = (order) => {

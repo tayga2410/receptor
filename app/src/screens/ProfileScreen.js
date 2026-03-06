@@ -7,13 +7,13 @@ import {
   ScrollView,
   Modal,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
 import Logo from '../components/Logo';
@@ -21,6 +21,7 @@ import useStore from '../store/useStore';
 
 const ProfileScreen = ({ navigation }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   const { user, logout, updateUser, updateUserCurrency } = useStore();
   const [loading, setLoading] = useState(false);
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
@@ -55,17 +56,17 @@ const ProfileScreen = ({ navigation }) => {
     try {
       setUpdatingCurrency(true);
       const response = await api.users.updateCurrency(currency);
-      
+
       if (response.ok) {
         updateUserCurrency(currency);
         setCurrencyModalVisible(false);
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.message || 'Failed to update currency');
+        dialog.alert(t('error'), error.message || 'Failed to update currency');
       }
     } catch (error) {
       console.error('Failed to update currency:', error);
-      Alert.alert('Error', error.message || 'Network error');
+      dialog.alert(t('error'), error.message || 'Network error');
     } finally {
       setUpdatingCurrency(false);
     }
@@ -120,7 +121,7 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.menuItemText}>{t('change_currency')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textLight} />
           </Pressable>
-          <Pressable style={styles.menuItem} onPress={() => Alert.alert(t('about_app'), t('about_app_text'))}>
+          <Pressable style={styles.menuItem} onPress={() => dialog.alert(t('about_app'), t('about_app_text'))}>
             <Text style={styles.menuItemText}>{t('about_app')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textLight} />
           </Pressable>

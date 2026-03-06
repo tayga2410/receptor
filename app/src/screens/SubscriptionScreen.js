@@ -6,12 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { iapService, PRODUCT_SKUS } from '../services/IAPService';
 import useStore from '../store/useStore';
 import { getCurrencySymbol, CURRENCIES } from '../utils/currency';
@@ -28,6 +28,7 @@ const DEMO_PRICES = {
 
 const SubscriptionScreen = ({ navigation }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
   const updateUser = useStore((state) => state.updateUser);
 
@@ -67,15 +68,16 @@ const SubscriptionScreen = ({ navigation }) => {
       const result = await iapService.purchaseSubscription(productId);
 
       if (result.success) {
-        Alert.alert(
+        await dialog.alert(
           t('success'),
           t('premium_activated'),
-          [{ text: t('ok'), onPress: () => navigation.goBack() }]
+          t('ok')
         );
+        navigation.goBack();
       }
     } catch (error) {
       console.error('Purchase error:', error);
-      Alert.alert(
+      dialog.alert(
         t('error'),
         error.message || t('purchase_failed')
       );
@@ -90,13 +92,13 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       const purchases = await iapService.restorePurchases();
       if (purchases.length > 0) {
-        Alert.alert(t('success'), t('purchases_restored'));
+        dialog.alert(t('success'), t('purchases_restored'));
       } else {
-        Alert.alert(t('info'), t('no_purchases_found'));
+        dialog.alert(t('info'), t('no_purchases_found'));
       }
     } catch (error) {
       console.error('Restore error:', error);
-      Alert.alert(t('error'), t('restore_failed'));
+      dialog.alert(t('error'), t('restore_failed'));
     } finally {
       setLoading(false);
     }

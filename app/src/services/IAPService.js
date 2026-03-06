@@ -1,4 +1,4 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import { api } from './api';
 import useStore from '../store/useStore';
 

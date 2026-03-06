@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   TextInput,
   Modal,
@@ -14,6 +13,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 
 const StatCard = ({ title, value, icon, color }) => (
@@ -118,6 +118,7 @@ const UserCard = ({ user, onGrantAmbassador, onGrantPremium, onRevoke, onDelete 
 
 const AdminDashboardScreen = ({ navigation }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState(null);
@@ -140,7 +141,7 @@ const AdminDashboardScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Failed to load admin data:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить данные');
+      dialog.alert(t('error'), 'Не удалось загрузить данные');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -173,113 +174,107 @@ const AdminDashboardScreen = ({ navigation }) => {
   };
 
   const handleGrantAmbassador = async (user) => {
-    Alert.alert(
+    const confirmed = await dialog.confirm(
       'Выдать Ambassador',
       `Выдать Ambassador подписку пользователю ${user.name || user.email} на 12 месяцев?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Выдать',
-          onPress: async () => {
-            try {
-              const res = await api.admin.grantAmbassador(user.id, 12);
-              if (res.ok) {
-                Alert.alert('Успешно', 'Ambassador подписка выдана');
-                loadData();
-              } else {
-                const error = await res.json();
-                Alert.alert('Ошибка', error.message);
-              }
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось выдать подписку');
-            }
-          },
-        },
-      ]
+      {
+        confirmText: 'Выдать',
+        cancelText: 'Отмена',
+        destructive: false,
+      }
     );
+    if (!confirmed) return;
+
+    try {
+      const res = await api.admin.grantAmbassador(user.id, 12);
+      if (res.ok) {
+        dialog.alert(t('success'), 'Ambassador подписка выдана');
+        loadData();
+      } else {
+        const error = await res.json();
+        dialog.alert(t('error'), error.message);
+      }
+    } catch (error) {
+      dialog.alert(t('error'), 'Не удалось выдать подписку');
+    }
   };
 
   const handleGrantPremium = async (user) => {
-    Alert.alert(
+    const confirmed = await dialog.confirm(
       'Выдать Premium',
       `Выдать Premium подписку пользователю ${user.name || user.email} на 1 месяц?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Выдать',
-          onPress: async () => {
-            try {
-              const res = await api.admin.grantPremium(user.id, 1);
-              if (res.ok) {
-                Alert.alert('Успешно', 'Premium подписка выдана');
-                loadData();
-              } else {
-                const error = await res.json();
-                Alert.alert('Ошибка', error.message);
-              }
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось выдать подписку');
-            }
-          },
-        },
-      ]
+      {
+        confirmText: 'Выдать',
+        cancelText: 'Отмена',
+        destructive: false,
+      }
     );
+    if (!confirmed) return;
+
+    try {
+      const res = await api.admin.grantPremium(user.id, 1);
+      if (res.ok) {
+        dialog.alert(t('success'), 'Premium подписка выдана');
+        loadData();
+      } else {
+        const error = await res.json();
+        dialog.alert(t('error'), error.message);
+      }
+    } catch (error) {
+      dialog.alert(t('error'), 'Не удалось выдать подписку');
+    }
   };
 
   const handleRevoke = async (user) => {
-    Alert.alert(
+    const confirmed = await dialog.confirm(
       'Отозвать подписку',
       `Отозвать подписку у ${user.name || user.email}?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Отозвать',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await api.admin.revokeSubscription(user.id);
-              if (res.ok) {
-                Alert.alert('Успешно', 'Подписка отозвана');
-                loadData();
-              } else {
-                const error = await res.json();
-                Alert.alert('Ошибка', error.message);
-              }
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось отозвать подписку');
-            }
-          },
-        },
-      ]
+      {
+        confirmText: 'Отозвать',
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+    if (!confirmed) return;
+
+    try {
+      const res = await api.admin.revokeSubscription(user.id);
+      if (res.ok) {
+        dialog.alert(t('success'), 'Подписка отозвана');
+        loadData();
+      } else {
+        const error = await res.json();
+        dialog.alert(t('error'), error.message);
+      }
+    } catch (error) {
+      dialog.alert(t('error'), 'Не удалось отозвать подписку');
+    }
   };
 
   const handleDelete = async (user) => {
-    Alert.alert(
+    const confirmed = await dialog.confirm(
       '⚠️ Удалить пользователя',
       `Вы уверены, что хотите удалить ${user.name || user.email}?\n\nЭто действие необратимо!`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await api.admin.deleteUser(user.id);
-              if (res.ok) {
-                Alert.alert('Успешно', 'Пользователь удалён');
-                loadData();
-              } else {
-                const error = await res.json();
-                Alert.alert('Ошибка', error.message);
-              }
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось удалить пользователя');
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+    if (!confirmed) return;
+
+    try {
+      const res = await api.admin.deleteUser(user.id);
+      if (res.ok) {
+        dialog.alert(t('success'), 'Пользователь удалён');
+        loadData();
+      } else {
+        const error = await res.json();
+        dialog.alert(t('error'), error.message);
+      }
+    } catch (error) {
+      dialog.alert(t('error'), 'Не удалось удалить пользователя');
+    }
   };
 
   if (loading) {

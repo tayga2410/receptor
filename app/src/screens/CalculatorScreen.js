@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 
 const CalculatorScreen = () => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   const [expenses, setExpenses] = useState([]);
   const [profitPerDish, setProfitPerDish] = useState('');
   const [newExpenseName, setNewExpenseName] = useState('');
@@ -41,7 +43,7 @@ const CalculatorScreen = () => {
 
   const addExpense = async () => {
     if (!newExpenseName.trim()) {
-      Alert.alert(t('error'), t('error_enter_expense_name'));
+      dialog.alert(t('error'), t('error_enter_expense_name'));
       return;
     }
 
@@ -57,31 +59,30 @@ const CalculatorScreen = () => {
       setShowAddForm(false);
     } catch (error) {
       console.error('Failed to add expense:', error);
-      Alert.alert(t('error'), t('error_add_expense'));
+      dialog.alert(t('error'), t('error_add_expense'));
     }
   };
 
   const removeExpense = async (id) => {
-    Alert.alert(
+    const confirmed = await dialog.confirm(
       t('delete'),
       t('confirm_delete_expense'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.expenses.delete(id);
-              setExpenses(expenses.filter(e => e.id !== id));
-            } catch (error) {
-              console.error('Failed to delete expense:', error);
-              Alert.alert(t('error'), t('error_delete_expense_failed'));
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+
+    if (confirmed) {
+      try {
+        await api.expenses.delete(id);
+        setExpenses(expenses.filter(e => e.id !== id));
+      } catch (error) {
+        console.error('Failed to delete expense:', error);
+        dialog.alert(t('error'), t('error_delete_expense_failed'));
+      }
+    }
   };
 
   const updateExpenseName = async (id, name) => {

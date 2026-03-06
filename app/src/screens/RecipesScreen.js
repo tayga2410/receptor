@@ -7,12 +7,12 @@ import {
   Pressable,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
   Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import { CURRENCIES, getCurrencySymbol } from '../utils/currency';
 import useStore from '../store/useStore';
@@ -21,6 +21,7 @@ const FREE_RECIPE_LIMIT = 5;
 
 const RecipesScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ const RecipesScreen = ({ navigation }) => {
       setRecipes(Array.isArray(data) ? data : (data.recipes || []));
     } catch (error) {
       console.error('Failed to load recipes:', error);
-      Alert.alert('Error', error.message || 'Failed to load recipes');
+      dialog.alert(t('error'), error.message || 'Failed to load recipes');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,32 +83,30 @@ const RecipesScreen = ({ navigation }) => {
     navigation.navigate('RecipeForm', { recipe });
   };
 
-  const handleDeleteRecipe = (recipe) => {
-    Alert.alert(
+  const handleDeleteRecipe = async (recipe) => {
+    const confirmed = await dialog.confirm(
       t('delete'),
       t('confirm_delete_recipe'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await api.recipes.delete(recipe.id);
-              if (response.ok) {
-                loadRecipes();
-              } else {
-                const error = await response.json();
-                Alert.alert('Error', error.message || 'Failed to delete recipe');
-              }
-            } catch (error) {
-              console.error('Failed to delete recipe:', error);
-              Alert.alert('Error', error.message || 'Network error');
-            }
-          },
-        },
-      ]
+      {
+        confirmText: t('delete'),
+        cancelText: t('cancel'),
+        destructive: true,
+      }
     );
+    if (!confirmed) return;
+
+    try {
+      const response = await api.recipes.delete(recipe.id);
+      if (response.ok) {
+        loadRecipes();
+      } else {
+        const error = await response.json();
+        dialog.alert(t('error'), error.message || 'Failed to delete recipe');
+      }
+    } catch (error) {
+      console.error('Failed to delete recipe:', error);
+      dialog.alert(t('error'), error.message || 'Network error');
+    }
   };
 
   // Конвертация единиц: quantity в fromUnit -> количество в toUnit

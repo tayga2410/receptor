@@ -5,17 +5,18 @@ import {
   Text,
   TextInput,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 
 const ChangePasswordScreen = ({ navigation }) => {
   const { t } = useTranslation();
-  
+  const dialog = useDialog();
+
   const [loading, setLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -28,17 +29,17 @@ const ChangePasswordScreen = ({ navigation }) => {
 
   const handleChangePassword = async () => {
     if (!formData.currentPassword) {
-      Alert.alert(t('error'), t('error_current_password'));
+      dialog.alert(t('error'), t('error_current_password'));
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      Alert.alert(t('error'), t('error_short_password'));
+      dialog.alert(t('error'), t('error_short_password'));
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      Alert.alert(t('error'), t('error_password_mismatch'));
+      dialog.alert(t('error'), t('error_password_mismatch'));
       return;
     }
 
@@ -50,23 +51,19 @@ const ChangePasswordScreen = ({ navigation }) => {
       });
 
       if (response.ok) {
-        Alert.alert(t('success'), t('password_changed'), [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        await dialog.alert(t('success'), t('password_changed'));
+        navigation.goBack();
       } else {
         const error = await response.json();
         if (error.message?.includes('Текущий пароль неверен') || error.message?.includes('incorrect')) {
-          Alert.alert(t('error'), t('error_current_password_invalid'));
+          dialog.alert(t('error'), t('error_current_password_invalid'));
         } else {
-          Alert.alert(t('error'), error.message || t('error_change_password'));
+          dialog.alert(t('error'), error.message || t('error_change_password'));
         }
       }
     } catch (error) {
       console.error('Failed to change password:', error);
-      Alert.alert(t('error'), t('error_network'));
+      dialog.alert(t('error'), t('error_network'));
     } finally {
       setLoading(false);
     }

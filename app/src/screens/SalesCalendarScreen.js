@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import { parseDate } from '../utils/date';
 import ProfitBarChart from '../components/ProfitBarChart';
@@ -44,6 +45,7 @@ Object.keys(LOCALES).forEach(lang => {
 
 const SalesCalendarScreen = ({ navigation }) => {
   const { t, language } = useTranslation();
+  const dialog = useDialog();
   const user = useStore((state) => state.user);
 
   // Проверка подписки
@@ -101,7 +103,7 @@ const SalesCalendarScreen = ({ navigation }) => {
       setMarkedDates(formatted);
     } catch (error) {
       console.error('Failed to load calendar:', error);
-      Alert.alert(t('error'), t('error_load_sales'));
+      dialog.alert(t('error'), t('error_load_sales'));
     } finally {
       setLoading(false);
     }

@@ -5,19 +5,20 @@ import {
   Text,
   TextInput,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, THEME } from '../theme/colors';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useDialog } from '../contexts/DialogContext';
 import { api } from '../services/api';
 import useStore from '../store/useStore';
 
 const EditProfileScreen = ({ navigation }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   const { user, setUser } = useStore();
-  
+
   const [loading, setLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,17 +32,17 @@ const EditProfileScreen = ({ navigation }) => {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      Alert.alert(t('error'), t('error_name_empty'));
+      dialog.alert(t('error'), t('error_name_empty'));
       return;
     }
 
     if (formData.email && !formData.email.includes('@')) {
-      Alert.alert(t('error'), t('error_invalid_email'));
+      dialog.alert(t('error'), t('error_invalid_email'));
       return;
     }
 
     if (needsPassword && !formData.currentPassword) {
-      Alert.alert(t('error'), t('current_password_required'));
+      dialog.alert(t('error'), t('current_password_required'));
       return;
     }
 
@@ -62,23 +63,19 @@ const EditProfileScreen = ({ navigation }) => {
       if (response.ok) {
         const updatedUser = await response.json();
         setUser(updatedUser);
-        Alert.alert(t('success'), t('profile_updated'), [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        await dialog.alert(t('success'), t('profile_updated'));
+        navigation.goBack();
       } else {
         const error = await response.json();
         if (error.message?.includes('Текущий пароль неверен') || error.message?.includes('incorrect') || error.message?.includes('required')) {
-          Alert.alert(t('error'), error.message || t('error_current_password_invalid'));
+          dialog.alert(t('error'), error.message || t('error_current_password_invalid'));
         } else {
-          Alert.alert(t('error'), error.message || t('error_update_profile'));
+          dialog.alert(t('error'), error.message || t('error_update_profile'));
         }
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
-      Alert.alert(t('error'), t('error_network'));
+      dialog.alert(t('error'), t('error_network'));
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useStore from '../store/useStore';
 import { navigationRef } from '../navigation/navigationRef';
-import { Alert } from 'react-native';
+import { getGlobalDialog } from '../contexts/DialogContext';
 import { TRANSLATIONS } from '../constants/translations';
 
 const TOKEN_STORAGE_KEY = '@app_token';
@@ -130,28 +130,25 @@ export const apiFetch = async (endpoint, options = {}) => {
         const language = state.language || 'RU';
         const translations = TRANSLATIONS[language] || TRANSLATIONS.RU;
 
-        // Показываем пользователю уведомление
-        Alert.alert(
-          translations.session_expired,
-          translations.session_expired_message,
-          [
-            {
-              text: translations.ok,
-              onPress: () => {
-                state.logout();
+        // Показываем пользователю уведомление через кроссплатформенный диалог
+        const dialog = getGlobalDialog();
+        if (dialog) {
+          dialog.alert(
+            translations.session_expired,
+            translations.session_expired_message,
+            translations.ok
+          ).then(() => {
+            state.logout();
 
-                // Перенаправляем на экран логина
-                if (navigationRef.current && navigationRef.current.reset) {
-                  navigationRef.current.reset({
-                    index: 0,
-                    routes: [{ name: 'Auth' }],
-                  });
-                }
-              },
-            },
-          ],
-          { cancelable: false }
-        );
+            // Перенаправляем на экран логина
+            if (navigationRef.current && navigationRef.current.reset) {
+              navigationRef.current.reset({
+                index: 0,
+                routes: [{ name: 'Auth' }],
+              });
+            }
+          });
+        }
 
         const authError = new Error('Session expired. Please login again.');
         authError.name = 'AuthError';
